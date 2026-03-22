@@ -1,0 +1,61 @@
+.lobby-container {
+  width: 100vw;
+  height: 100vh;
+  /* เปลี่ยนเป็น URL ภาพอวกาศที่คุณมี หรือใช้สีพื้นหลังเข้มๆ */
+  background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* สร้างเอฟเฟกต์แสงฟุ้งๆ รอบตัวอักษร */
+.game-title {
+  font-family: "Orbitron", sans-serif; /* ฟอนต์แนว Sci-Fi */
+  font-size: 5rem;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 15px;
+  text-shadow:
+    0 0 10px #00d4ff,
+    0 0 20px #00d4ff,
+    0 0 40px #00d4ff;
+  margin-bottom: 3rem;
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ปุ่มสไตล์ Space Pilot Interface */
+.menu-btn {
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
+  position: relative;
+  clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%); /* ตัดมุมให้ดู Sci-Fi */
+}
+
+.menu-btn:hover {
+  background: rgba(0, 212, 255, 0.2);
+  border-color: #00d4ff;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+  transform: translateY(-3px);
+  color: #fff;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
