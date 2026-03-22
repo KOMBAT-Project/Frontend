@@ -1,0 +1,424 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap');
+
+:root {
+  --theme-cyan: #00f3ff;
+  --theme-dark: #020712;
+  --theme-panel: rgba(6, 15, 30, 0.85);
+  --accent-green: #00ff88;
+  --accent-red: #ff3e3e;
+  --accent-yellow: #ffd700;
+  --grid-color: rgba(0, 243, 255, 0.05);
+}
+
+/* =========================================
+   1. MAIN SCREEN LAYOUT
+========================================= */
+.config-screen {
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--theme-dark);
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, #06122b 0%, var(--theme-dark) 80%);
+  background-size: 50px 50px, 50px 50px, 100% 100%;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  font-family: "Rajdhani", sans-serif;
+  position: relative;
+  padding: 20px 50px;
+}
+
+.hud-scanline {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.15));
+  background-size: 100% 4px;
+  pointer-events: none; z-index: 100; opacity: 0.5;
+}
+
+/* =========================================
+   2. HEADER
+========================================= */
+.config-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  border-bottom: 2px solid rgba(0, 243, 255, 0.2);
+  padding-bottom: 10px;
+  position: relative;
+}
+
+.config-header::after {
+  content: ""; position: absolute; bottom: -2px; left: 0;
+  width: 200px; height: 2px;
+  background: var(--theme-cyan);
+  box-shadow: 0 0 10px var(--theme-cyan);
+}
+
+.config-title {
+  font-family: "Orbitron", sans-serif;
+  font-size: 2rem; font-weight: 900;
+  color: var(--theme-cyan); margin: 0;
+  letter-spacing: 5px;
+  text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+}
+
+.grammar-toggle-btn {
+  background: rgba(0, 243, 255, 0.08);
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  color: var(--theme-cyan);
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: 0.2s;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.grammar-toggle-btn:hover {
+  background: rgba(0, 243, 255, 0.18);
+  box-shadow: 0 0 12px rgba(0, 243, 255, 0.3);
+}
+
+/* =========================================
+   3. GRAMMAR PANEL
+========================================= */
+.grammar-panel {
+  flex-shrink: 0;
+  background: rgba(0, 10, 25, 0.95);
+  border: 1px solid rgba(0, 243, 255, 0.2);
+  border-left: 4px solid var(--theme-cyan);
+  padding: 14px 20px;
+  margin-bottom: 12px;
+  animation: slideDown 0.2s ease-out;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.grammar-panel-header {
+  display: flex; align-items: baseline; gap: 15px; margin-bottom: 10px;
+}
+.grammar-title {
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.8rem; color: var(--theme-cyan); letter-spacing: 2px;
+}
+.grammar-subtitle { font-size: 0.8rem; color: #556; }
+
+.grammar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.grammar-item {
+  background: rgba(0, 243, 255, 0.03);
+  border: 1px solid rgba(0, 243, 255, 0.1);
+  padding: 8px 12px;
+  font-size: 0.82rem;
+}
+.grammar-label { color: #88acc2; font-size: 0.72rem; letter-spacing: 1px; margin-bottom: 3px; font-family: "Orbitron", sans-serif; }
+.grammar-good  { color: var(--accent-green); font-family: 'Courier New', monospace; }
+.grammar-bad   { color: var(--accent-red);   font-family: 'Courier New', monospace; margin-top: 2px; }
+
+.grammar-keywords {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  border-top: 1px solid rgba(0, 243, 255, 0.1);
+  padding-top: 10px;
+}
+.kw-group { display: flex; align-items: center; gap: 6px; }
+.kw-cat { font-size: 0.7rem; color: #556; font-family: "Orbitron", sans-serif; }
+.grammar-keywords code {
+  background: rgba(0, 243, 255, 0.1);
+  color: var(--theme-cyan);
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border: 1px solid rgba(0, 243, 255, 0.2);
+}
+
+/* =========================================
+   4. SCROLLABLE CARDS AREA
+========================================= */
+.config-grid-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 4px 10px 0;
+  z-index: 10;
+}
+
+.config-grid-container::-webkit-scrollbar { width: 5px; }
+.config-grid-container::-webkit-scrollbar-track { background: transparent; }
+.config-grid-container::-webkit-scrollbar-thumb {
+  background: var(--theme-cyan); border-radius: 3px;
+}
+
+/* =========================================
+   5. UNIT CONFIG CARD
+========================================= */
+.unit-config-card {
+  display: flex;
+  background: var(--theme-panel);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(0, 243, 255, 0.15);
+  padding: 16px 24px;
+  align-items: flex-start;
+  position: relative;
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  transition: all 0.3s ease;
+}
+
+.unit-config-card::before {
+  content: ""; position: absolute; top: 0; left: 0;
+  width: 4px; height: 100%;
+  background-color: var(--unit-color, var(--theme-cyan));
+  box-shadow: 0 0 12px var(--unit-color, var(--theme-cyan));
+}
+
+.unit-config-card:hover {
+  transform: translateX(6px);
+  background: rgba(0, 243, 255, 0.04);
+  border-color: rgba(0, 243, 255, 0.3);
+}
+
+.unit-preview {
+  display: flex; flex-direction: column; align-items: center;
+  width: 100px; margin-right: 30px; flex-shrink: 0;
+}
+.img-wrapper {
+  width: 70px; height: 70px; padding: 4px;
+  border: 1px solid var(--theme-cyan);
+  background: rgba(0, 243, 255, 0.1);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex; justify-content: center; align-items: center;
+}
+.img-wrapper img { width: 100%; height: 100%; object-fit: cover; clip-path: inherit; }
+.unit-name {
+  margin-top: 8px; font-family: "Orbitron", sans-serif;
+  font-weight: 700; font-size: 0.75rem; letter-spacing: 2px;
+  color: var(--theme-cyan); text-shadow: 0 0 5px var(--theme-cyan);
+}
+
+/* =========================================
+   6. INPUTS
+========================================= */
+.unit-inputs {
+  flex: 1; display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 24px; align-items: start;
+}
+
+.input-group { display: flex; flex-direction: column; gap: 5px; }
+
+.input-group label {
+  font-family: "Orbitron", sans-serif; font-size: 0.7rem;
+  color: #88acc2; letter-spacing: 1.5px;
+  display: flex; align-items: center; gap: 10px;
+}
+
+.input-group input, .input-group select {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #1a3c5a;
+  border-bottom: 2px solid var(--theme-cyan);
+  color: #fff; padding: 10px 12px;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 1rem; font-weight: 500;
+  outline: none; transition: all 0.3s;
+}
+.input-group input:focus, .input-group select:focus {
+  background: rgba(0, 243, 255, 0.07);
+  border-color: var(--theme-cyan);
+  box-shadow: 0 4px 12px -4px rgba(0, 243, 255, 0.4);
+}
+.input-group select option { background: #020b16; color: #fff; }
+
+.input-hint {
+  font-size: 0.72rem; color: #445; font-family: "Rajdhani", sans-serif;
+}
+
+/* Script status badge */
+.script-status-badge {
+  font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-family: "Orbitron", sans-serif;
+}
+
+/* Script controls row */
+.script-controls {
+  display: flex; gap: 8px;
+}
+.script-controls select { flex: 1; }
+
+.edit-script-btn {
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid var(--accent-green);
+  color: var(--accent-green);
+  font-family: "Orbitron", sans-serif; font-size: 0.72rem; font-weight: bold;
+  padding: 0 14px; cursor: pointer; transition: 0.2s; white-space: nowrap;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.edit-script-btn:hover {
+  background: var(--accent-green); color: #000;
+  box-shadow: 0 0 12px var(--accent-green);
+}
+
+/* Script preview */
+.script-preview {
+  font-family: 'Courier New', monospace; font-size: 0.8rem;
+  color: #88acc2; background: rgba(0,0,0,0.6);
+  padding: 7px 10px; border-left: 2px solid rgba(0,243,255,0.2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Inline script error */
+.inline-script-error {
+  font-size: 0.75rem; color: var(--accent-red);
+  font-family: "Orbitron", sans-serif; letter-spacing: 0.5px;
+  padding: 4px 0;
+}
+
+/* =========================================
+   7. ACTION BAR
+========================================= */
+.action-bar {
+  flex-shrink: 0; margin-top: 14px;
+  display: flex; justify-content: center; align-items: center;
+  gap: 30px; padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.08); z-index: 10;
+}
+.action-divider { width: 2px; height: 28px; background: rgba(0,243,255,0.25); }
+
+.deploy-error {
+  color: var(--accent-red); font-family: "Orbitron", sans-serif;
+  font-size: 0.75rem; letter-spacing: 1px;
+  text-shadow: 0 0 8px var(--accent-red);
+  text-align: center;
+}
+
+.hud-btn {
+  background: transparent; border: none; color: #fff;
+  font-family: "Orbitron", sans-serif; font-weight: 700;
+  letter-spacing: 2px; padding: 13px 36px;
+  cursor: pointer; transition: 0.25s; text-transform: uppercase;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.hud-btn.back-btn {
+  background: rgba(255,62,62,0.08); border-left: 3px solid var(--accent-red);
+}
+.hud-btn.back-btn:hover { background: var(--accent-red); box-shadow: 0 0 20px var(--accent-red); color: #000; }
+
+.hud-btn.deploy-btn {
+  background: rgba(0,255,136,0.08); border-right: 3px solid var(--accent-green);
+  color: var(--accent-green);
+}
+.hud-btn.deploy-btn:hover { background: var(--accent-green); box-shadow: 0 0 20px var(--accent-green); color: #000; }
+
+/* =========================================
+   8. CODE EDITOR MODAL
+========================================= */
+.modal-backdrop {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.88); backdrop-filter: blur(8px);
+  display: flex; justify-content: center; align-items: center; z-index: 999;
+}
+
+.strategy-modal {
+  background: var(--theme-dark);
+  border: 1px solid rgba(0,243,255,0.3);
+  box-shadow: 0 0 40px rgba(0,243,255,0.15);
+  padding: 28px; position: relative;
+  clip-path: polygon(0 16px, 16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+}
+
+.code-editor-modal { width: 90vw; max-width: 700px; }
+
+.modal-deco-line {
+  position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--theme-cyan), transparent);
+}
+
+.modal-header-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.modal-prompt {
+  font-family: "Orbitron", sans-serif; color: var(--theme-cyan);
+  font-size: 0.95rem; margin: 0; letter-spacing: 2px;
+}
+.modal-grammar-link {
+  background: transparent; border: 1px solid rgba(0,243,255,0.3);
+  color: rgba(0,243,255,0.6); font-family: "Orbitron", sans-serif;
+  font-size: 0.65rem; padding: 5px 12px; cursor: pointer; transition: 0.2s;
+}
+.modal-grammar-link:hover { color: var(--theme-cyan); border-color: var(--theme-cyan); }
+
+.modal-textarea {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0,0,0,0.85);
+  border: 1px solid rgba(0,243,255,0.2);
+  border-left: 3px solid var(--theme-cyan);
+  color: var(--accent-green); padding: 14px;
+  resize: none; outline: none; margin-bottom: 0;
+  transition: border-color 0.2s;
+}
+.modal-textarea.code-font {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.95rem; line-height: 1.6;
+  height: 300px; white-space: pre; overflow-x: auto;
+}
+.modal-textarea:focus {
+  background: rgba(0,243,255,0.04);
+  border-color: var(--theme-cyan);
+}
+.modal-textarea.has-error {
+  border-left-color: var(--accent-red);
+  color: #ffb3b3;
+}
+
+/* =========================================
+   9. VALIDATION PANEL
+========================================= */
+.validation-panel {
+  min-height: 36px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-top: none;
+  padding: 8px 14px;
+  margin-bottom: 16px;
+  font-size: 0.8rem;
+  font-family: 'Courier New', monospace;
+}
+.val-empty  { color: #445; }
+.val-ok     { color: var(--accent-green); }
+.val-errors { display: flex; flex-direction: column; gap: 3px; }
+.val-error-item { color: var(--accent-red); }
+.val-error-item.muted { color: #664; }
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+
+.modal-btn {
+  font-family: "Orbitron", sans-serif; padding: 10px 20px;
+  cursor: pointer; border: 1px solid transparent;
+  background: transparent; transition: 0.25s; font-size: 0.8rem; letter-spacing: 1px;
+}
+.modal-btn.cancel { color: #88acc2; border-color: #88acc2; }
+.modal-btn.cancel:hover { background: #88acc2; color: #000; }
+.modal-btn.save { color: var(--theme-cyan); border-color: var(--theme-cyan); font-weight: bold; }
+.modal-btn.save:hover { background: var(--theme-cyan); color: #000; box-shadow: 0 0 15px var(--theme-cyan); }
+.modal-btn.save.save-warn { color: var(--accent-yellow); border-color: var(--accent-yellow); }
+.modal-btn.save.save-warn:hover { background: var(--accent-yellow); color: #000; }

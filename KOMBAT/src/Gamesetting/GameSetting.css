@@ -1,0 +1,147 @@
+/* --- Overlay --- */
+.settings-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+/* --- Modal Container --- */
+.settings-modal {
+  width: 800px;
+  background: #0f0f13;
+  border: 1px solid #444;
+  border-top: 4px solid #00e5ff; /* สีธีม */
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  padding: 30px;
+  font-family: "Orbitron", sans-serif;
+  color: #fff;
+  clip-path: polygon(
+    0 0, 
+    100% 0, 
+    100% 95%, 
+    97% 100%, 
+    3% 100%, 
+    0 95%
+  );
+}
+
+/* --- Header --- */
+.settings-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  color: #00e5ff;
+  text-transform: uppercase;
+}
+.header-line {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #00e5ff 0%, transparent 100%);
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+/* --- Body Layout --- */
+.settings-body {
+  display: flex;
+  gap: 40px;
+}
+
+.settings-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.column-title {
+  font-size: 0.9rem;
+  color: #888;
+  border-left: 3px solid #ff3333; /* สีรอง */
+  padding-left: 10px;
+  margin-bottom: 10px;
+}
+
+.separator {
+  height: 1px;
+  background: #333;
+  margin: 10px 0;
+}
+
+/* --- Inputs --- */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.input-group label {
+  font-size: 0.75rem;
+  color: #aaa;
+  font-family: "Kanit", sans-serif; /* ให้อ่านง่าย */
+}
+
+.input-group input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #333;
+  color: #fff;
+  padding: 10px;
+  font-family: "Orbitron", sans-serif;
+  font-size: 1rem;
+  outline: none;
+  transition: 0.3s;
+}
+
+.input-group input:focus {
+  border-color: #00e5ff;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.row-group {
+  display: flex;
+  gap: 15px;
+}
+.half { flex: 1; }
+
+/* --- Footer Buttons --- */
+.settings-footer {
+  margin-top: 30px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid #666;
+  color: #888;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-family: "Orbitron";
+  transition: 0.3s;
+}
+.btn-cancel:hover { border-color: #fff; color: #fff; }
+
+.btn-save {
+  background: #00e5ff;
+  border: none;
+  color: #000;
+  font-weight: bold;
+  padding: 10px 30px;
+  cursor: pointer;
+  font-family: "Orbitron";
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%);
+  transition: 0.3s;
+}
+.btn-save:hover {
+  background: #fff;
+  box-shadow: 0 0 15px #00e5ff;
+}

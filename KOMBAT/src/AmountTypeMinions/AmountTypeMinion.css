@@ -1,0 +1,263 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Kanit:wght@300;600&display=swap");
+
+/* --- 1. Background & Atmosphere --- */
+.selection-screen {
+  width: 100vw;
+  height: 100vh;
+  background-color: #050505;
+  background-image:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(20, 30, 60, 0.6) 0%,
+      rgba(0, 0, 0, 1) 90%
+    ),
+    linear-gradient(0deg, rgba(0, 255, 170, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 170, 0.03) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    40px 40px,
+    40px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  font-family: "Kanit", sans-serif;
+  color: #fff;
+}
+
+/* Scanline Effect */
+.selection-screen::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  z-index: 10;
+  background-size: 100% 2px;
+  pointer-events: none;
+}
+
+/* --- 2. Title Section --- */
+.selection-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  z-index: 20;
+}
+
+.selection-title {
+  font-family: "Orbitron", sans-serif;
+  font-size: 2.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  background: linear-gradient(to right, #fff, #00d4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+.selection-subtitle {
+  color: #8899a6;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  margin-top: 5px;
+}
+
+/* --- 3. The Grid --- */
+.race-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  width: 95%;
+  max-width: 1400px;
+  padding: 40px 0;
+  perspective: 1000px; /* จำเป็นสำหรับ 3D Effect */
+}
+
+/* --- 4. Card & New Effects (3D + Power-up) --- */
+.race-card {
+  position: relative;
+  width: 170px;
+  height: 250px;
+  flex-shrink: 0;
+  background: #000;
+  clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%);
+  border: 1px solid #333;
+  cursor: pointer;
+  
+  /* ค่าเริ่มต้นสำหรับการ์ดปกติ (เป็นภาพขาวดำ) */
+  filter: grayscale(100%) brightness(0.6);
+  
+  /* ตัวแปรสำหรับ 3D Tilt */
+  --rx: 0deg;
+  --ry: 0deg;
+  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.15s ease-out, filter 0.3s, box-shadow 0.3s, border-color 0.3s;
+  
+  /* --- แก้ไข Animation ตรงนี้: ใช้ backwards แทน forwards --- */
+  animation: power-up-deploy 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+  animation-delay: var(--deploy-delay);
+}
+
+/* Hover Effect */
+.race-card:hover {
+  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(-15px) scale(1.1);
+  filter: grayscale(0%) brightness(1); /* คืนสีตอนเอาเมาส์ชี้ */
+  border-color: #fff;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  z-index: 100;
+}
+
+/* Selected State */
+.race-card.active {
+  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(-20px) scale(1.15);
+  filter: grayscale(0%) brightness(1.1); /* คืนสีตอนกดเลือก */
+  border: 2px solid var(--race-color);
+  box-shadow: 0 0 30px var(--race-color), inset 0 0 15px var(--race-color);
+  z-index: 90;
+}
+
+/* ส่วนขยายอื่นๆ ของการ์ด... (ใช้ของเดิมได้เลย) */
+.race-img-full {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s;
+}
+
+.race-card:hover .race-img-full {
+  transform: scale(1.1);
+}
+
+.card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, transparent 100%);
+  z-index: 1;
+}
+
+.race-name-label {
+  position: absolute;
+  bottom: 15px;
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+  font-family: "Orbitron", sans-serif;
+  font-size: 1.1rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px black;
+  color: #fff;
+}
+
+.selection-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  background: var(--race-color);
+  color: #000;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1rem;
+  z-index: 10;
+}
+
+/* --- 5. Controls Panel --- */
+.controls-panel {
+  position: relative;
+  z-index: 20;
+  width: 90%;
+  max-width: 800px;
+  padding: 15px 40px;
+  background: rgba(10, 10, 10, 0.8);
+  border: 1px solid #333;
+  border-top: 2px solid #00d4ff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(10px);
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 98% 100%, 2% 100%, 0 80%);
+  margin-top: 20px;
+}
+
+.info-text h4 {
+  color: #00d4ff;
+  margin: 0;
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 1px;
+}
+
+.confirm-btn {
+  background: transparent;
+  color: #00d4ff;
+  border: 2px solid #00d4ff;
+  padding: 12px 45px;
+  font-family: "Orbitron", sans-serif;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 35%);
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background: #00d4ff;
+  color: #000;
+  box-shadow: 0 0 25px #00d4ff;
+}
+
+.confirm-btn:disabled {
+  border-color: #444;
+  color: #444;
+  cursor: not-allowed;
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-family: "Orbitron", sans-serif;
+}
+.back-btn:hover {
+  border-color: #fff;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* --- 6. Animations --- */
+@keyframes power-up-deploy {
+  0% { 
+    opacity: 0; 
+    transform: translateY(60px) scale(0.9) perspective(1000px) rotateX(0deg) rotateY(0deg);
+    filter: brightness(0) blur(5px);
+  }
+  100% { 
+    opacity: 1; 
+    /* [แก้ไข] ลบ transform และ filter ออกจาก 100% เพื่อปล่อยให้ CSS หลัก (hover/active) ควบคุมการ์ดต่อได้อย่างอิสระ */
+  }
+}
