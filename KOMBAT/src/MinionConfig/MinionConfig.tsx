@@ -127,39 +127,87 @@ function validateScript(script: string): ValidationResult {
 // PRESET SCRIPTS (สอดคล้องกับ Grammar ของ Backend)
 // ============================================================
 const SCRIPT_TEMPLATES: Record<string, { label: string; code: string }> = {
-  hunter: {
-    label: "⚔️ Relentless Hunter",
-    code: `# RELENTLESS HUNTER — บุกขึ้นหน้า ยิงทุกอย่างที่เจอ
-t = 0
-while (1) {
-  t = t + 1
+      hunter: {
+        label: "⚔️ Berserker — บุกทะลุทุกอย่าง",
+        code: `# BERSERKER — ไล่ตามศัตรูตลอด
+if (nearby up) then shoot up 50
+else if (nearby upright) then shoot upright 50
+else if (nearby downright) then shoot downright 50
+else if (nearby down) then shoot down 50
+else if (nearby downleft) then shoot downleft 50
+else if (nearby upleft) then shoot upleft 50
+else {
   opLoc = opponent
   if (opLoc) then {
     dir = opLoc % 10
     if (dir - 1) then {
-      if (nearby up) then shoot up 20
-      else move up
-    } else {
-      if (nearby upleft) then shoot upleft 15
-      else move upleft
-    }
-  } else move up
-}`,
-  },
-  defender: {
-    label: "🛡️ Iron Sentinel",
-    code: `# IRON SENTINEL — ยืนรอ ถ้าศัตรูเข้ามาให้ยิงสาดกระสุน
-while (1) {
-  if (nearby up) then shoot up 25
-  else if (nearby upleft) then shoot upleft 20
-  else if (nearby upright) then shoot upright 20
-  else if (nearby downleft) then shoot downleft 10
-  else if (nearby downright) then shoot downright 10
-  else done
-}`,
+       if (dir - 2) then {
+          if (dir - 3) then {
+             if (dir - 4) then {
+                if (dir - 5) then move upleft else move downleft
+             } else move down
+          } else move downright
+       } else move upright
+    } else move up
+  } 
+  else {
+    r = random % 6
+    if (r) then {
+       if (r - 1) then {
+          if (r - 2) then {
+             if (r - 3) then {
+                if (r - 4) then move upleft else move downleft
+             } else move down
+          } else move downright
+       } else move upright
+    } else move up
+  }
+}
+done`,
+      },
+
+      defender: {
+        label: "🛡️ Iron Wall — ป้อมที่เดินได้",
+        code: `# IRON WALL — ยิงหนัก 30 แล้วถอยทิศตรงข้ามทันที
+# เทิร์นเดียวได้ทั้ง damage + ระยะปลอดภัย
+if (nearby up) then { 
+  shoot up 30 
+  move down 
+} else if (nearby upright) then { 
+  shoot upright 30 
+  move downleft 
+} else if (nearby downright) then { 
+  shoot downright 30 
+  move upleft 
+} else if (nearby down) then { 
+  shoot down 30 
+  move up 
+} else if (nearby downleft) then { 
+  shoot downleft 30 
+  move upright 
+} else if (nearby upleft) then { 
+  shoot upleft 30 
+  move downright 
+} 
+else {
+  opLoc = opponent
+  if (opLoc) then {
+    dir = opLoc % 10
+    # ตรวจสอบทิศทางจากหลักหน่วย (1=Up, 2=Upright, ..., 6=Upleft)
+    if (dir - 1) then {
+      if (dir - 2) then {
+        if (dir - 3) then {
+          if (dir - 4) then {
+            if (dir - 5) then move upleft else move downleft
+          } else move down
+        } else move downright
+      } else move upright
+    } else move up
+  }
+}
+done`,
   },
 };
-
 // ============================================================
 // EXAMPLE LABEL CONTENT
 // ============================================================

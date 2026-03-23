@@ -169,7 +169,7 @@
   margin: 1px 0; position: relative;
   background-color: #333;
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  transition: 0.2s; cursor: pointer;
+  transition: background-color 0.15s, transform 0.15s, box-shadow 0.15s; cursor: pointer;
 }
 
 .hex-cell::after {
@@ -196,10 +196,38 @@
 
 /* ── Executing hex ── */
 .hex-cell.hex-executing { background-color: #ff7700 !important; z-index: 20; }
-.unit-active-pulse { animation: unit-pulse 0.5s infinite alternate; }
+
+/* ── Animation Highlight (replay) ── */
+.hex-cell.hex-highlight {
+  background-color: #fff200 !important;
+  z-index: 20;
+  animation: hexHighlightPulse 0.4s ease-in-out infinite alternate;
+}
+.hex-cell.hex-highlight::after {
+  background-color: rgba(30, 28, 0, 0.85);
+}
+
+@keyframes hexHighlightPulse {
+  from { box-shadow: 0 0 8px  3px rgba(255, 242, 0, 0.5); }
+  to   { box-shadow: 0 0 18px 6px rgba(255, 242, 0, 0.95); }
+}
+
+/* ── Unit pulse (executing or highlighted) ── */
+.unit-active-pulse {
+  animation: unit-pulse 0.45s ease-in-out infinite alternate;
+}
 @keyframes unit-pulse {
   from { filter: brightness(1); }
   to   { filter: brightness(1.8) drop-shadow(0 0 6px #ff7700); }
+}
+
+/* unit pulse สีเหลืองสำหรับ replay highlight */
+.hex-highlight .unit-on-grid {
+  animation: unitHighlightPulse 0.45s ease-in-out infinite alternate;
+}
+@keyframes unitHighlightPulse {
+  from { filter: brightness(1.1); transform: scale(1); }
+  to   { filter: brightness(1.6) drop-shadow(0 0 8px rgba(255,242,0,0.9)); transform: scale(1.08); }
 }
 
 /* ── Highlight buy ── */
@@ -279,30 +307,74 @@
 }
 
 /* =========================================
-   BATTLE LOG
+   SIMULATION LOG (NEW POSITION: BOTTOM-RIGHT)
 ========================================= */
 .battle-log-panel {
-  position: absolute; bottom: 100px; right: 20px;
-  width: 280px; background: rgba(0,0,0,0.85);
-  border: 1px solid rgba(255,119,0,0.3);
-  border-top: 2px solid #ff7700;
-  z-index: 25; backdrop-filter: blur(6px);
+  position: absolute;
+  bottom: 30px;
+  right: 40px;
+  width: 320px;
+  height: 150px;
+  background: rgba(5, 11, 20, 0.92);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  border-top: 3px solid #ff7700;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  display: flex; flex-direction: column;
+  user-select: none;
+  cursor: default;
 }
+
+/* Draggable header */
 .battle-log-title {
-  padding: 6px 12px; font-family: 'Orbitron'; font-size: 0.65rem;
+  padding: 8px 12px;
+  font-family: 'Orbitron'; font-size: 0.7rem;
   color: #ff7700; letter-spacing: 2px;
+  background: rgba(255, 119, 0, 0.05);
   border-bottom: 1px solid rgba(255,119,0,0.2);
+  cursor: grab;
+  display: flex; justify-content: space-between; align-items: center;
 }
+.battle-log-title:active { cursor: grabbing; }
+
+.battle-log-title-text { pointer-events: none; }
+
+.battle-log-controls {
+  display: flex; gap: 6px;
+}
+
+.battle-log-btn {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: none; cursor: pointer; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  transition: 0.2s; line-height: 1;
+}
+.battle-log-btn-min   { background: rgba(255,200,0,0.2); color: #ffcc00; }
+.battle-log-btn-min:hover { background: rgba(255,200,0,0.6); }
+.battle-log-btn-close { background: rgba(255,50,50,0.2); color: #ff5555; }
+.battle-log-btn-close:hover { background: rgba(255,50,50,0.6); }
+
 .battle-log-entries {
-  padding: 8px 12px; max-height: 160px; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 3px;
-  font-family: 'Courier New', monospace; font-size: 0.72rem;
+  padding: 10px; flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+  font-family: 'Courier New', monospace; font-size: 0.75rem;
+  scrollbar-width: thin; scrollbar-color: #ff7700 #050b14;
+  transition: all 0.2s;
 }
-.log-entry  { color: #88aacc; }
-.log-attack { color: #ff4444; }
-.log-move   { color: #00d4ff; }
-.log-death  { color: #ff0055; font-weight: bold; }
-.log-system { color: #ff7700; letter-spacing: 1px; }
+.battle-log-entries.minimized { height: 0; padding: 0; overflow: hidden; flex: none; }
+
+.battle-log-minimized-hint {
+  display: none; padding: 4px 12px;
+  font-size: 0.6rem; color: rgba(255,119,0,0.4);
+  font-family: monospace; text-align: center; letter-spacing: 1px;
+}
+.battle-log-minimized-hint.visible { display: block; }
+
+.battle-log-resize {
+  height: 5px; cursor: ns-resize; background: transparent;
+}
+.battle-log-resize:hover { background: rgba(255,119,0,0.2); }
 
 /* =========================================
    GAME OVER MODAL

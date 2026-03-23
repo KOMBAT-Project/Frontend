@@ -22,9 +22,23 @@ export interface MinionConfigDTO {
   script?: string;
 }
 
+export interface ActionLogDTO {
+  minionName: string;
+  playerIndex: number;
+  spawnOrder: number;
+  type: "MOVE" | "SHOOT" | "DONE";
+  fromRow: number;
+  fromCol: number;
+  toRow: number;
+  toCol: number;
+  direction?: string;
+  expenditure?: number;
+}
+
 export interface GameState {
   currentTurn: number;
   currentPlayerIndex: number;
+  setupPhase: boolean
   gameOver: boolean;
   winnerMessage: string;
   players: {
@@ -37,6 +51,7 @@ export interface GameState {
   minions: MinionDTO[];
   p1Territory: HexDTO[];
   p2Territory: HexDTO[];
+  actionLogs: ActionLogDTO[];
 }
 
 export const useGameSocket = () => {
