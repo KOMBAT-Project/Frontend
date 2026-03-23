@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./GameScreen.css";
 import { type GameConfigData } from "../Gamesetting/GameSetting";
 
@@ -8,10 +8,10 @@ import NAS from "../assets/NAS.png";
 import TENG from "../assets/TENG.png";
 import TAE from "../assets/TAE.jpg";
 
-import { useGameSocket } from "../hooks/useGameSocket";
+import { useGameSocket, type ActionLogDTO } from "../hooks/useGameSocket";
 
 interface HexCoord { q: number; r: number; }
-const RANGE = [0, 1, 2, 3, 4, 5, 6, 7];
+const RANGE = [1, 2, 3, 4, 5, 6, 7, 8];
 
 const DEFAULT_CONFIG: GameConfigData = {
   spawnCost: 100, hexPurchaseCost: 1000, initBudget: 10000,
@@ -55,7 +55,6 @@ const RACES = [
   { id: 5, name: "THUNG",   image: TENG,    color: "#ff7215" },
 ];
 
-
 const NAMETAG_TO_ID: Record<string, number> = {
   HAMTARO: 1, CHONE: 2, TOR: 3, NOS: 4, THUNG: 5,
 };
@@ -68,7 +67,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
   const activeConfig = config || DEFAULT_CONFIG;
   const { gameState, connected, sendAction } = useGameSocket();
 
-  const [currentTurn, setCurrentTurn]           = useState(0);
+  const [currentTurn, setCurrentTurn]           = useState(1);
   const [phase, setPhase]                       = useState<GamePhase>("SETUP_P1");
   const [spawnCounter, setSpawnCounter]         = useState(0);
   const [actionCompleted, setActionCompleted]   = useState(false);
@@ -76,21 +75,28 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
   const [selectedShopUnit, setSelectedShopUnit] = useState<number | null>(null);
   const [placedUnits, setPlacedUnits]           = useState<Record<string, PlacedUnit>>({});
   const [unitSkinMap, setUnitSkinMap]           = useState<Record<string, number>>({});
-
-  // ── ✅ เพิ่ม waitingForBackend
   const [waitingForBackend, setWaitingForBackend] = useState(false);
-
-  const [isExecuting, setIsExecuting]               = useState(false);
+  const [isExecuting, setIsExecuting]           = useState(false);
   const [executingMinionKey, setExecutingMinionKey] = useState<string | null>(null);
-  const [battleLog, setBattleLog]                   = useState<LogEntry[]>([]);
-  const [logCounter, setLogCounter]                 = useState(0);
-  const logEndRef                                   = useRef<HTMLDivElement>(null);
+  const [highlightKey, setHighlightKey]         = useState<string | null>(null); // ✅ animation highlight
+  const [battleLog, setBattleLog]               = useState<LogEntry[]>([]);
+  const [logCounter, setLogCounter]             = useState(0);
+  const logEndRef                               = useRef<HTMLDivElement>(null);
+
+  // ✅ ref เก็บ pending state จาก backend เพื่อ apply หลัง replay จบ
+  const pendingPhaseRef = useRef<GamePhase | null>(null);
+  const pendingTurnRef  = useRef<number | null>(null);
+  const pendingGameOverRef = useRef<{
+    title: string; winner: string; reason: string;
+    p1Stats: { minions: number; hp: number; budget: number };
+    p2Stats: { minions: number; hp: number; budget: number };
+  } | null>(null);
 
   const p1Budget = gameState?.players?.[0]?.budget ?? activeConfig.initBudget;
   const p2Budget = gameState?.players?.[1]?.budget ?? activeConfig.initBudget;
 
-  const [p1Spawn, setP1Spawn] = useState<string[]>(["0,0","1,0","0,1","1,1","2,0"]);
-  const [p2Spawn, setP2Spawn] = useState<string[]>(["7,7","6,7","7,6","6,6","5,7"]);
+  const [p1Spawn, setP1Spawn] = useState<string[]>(["1,1","2,1","3,1","1,2","2,2"]);
+  const [p2Spawn, setP2Spawn] = useState<string[]>(["6,8","7,8","8,8","7,7","8,7"]);
 
   const [gameOverData, setGameOverData] = useState<{
     title: string; winner: string; reason: string;
@@ -105,44 +111,196 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
   const isP2BotTurn = phase.startsWith("P2") || phase === "SETUP_P2";
 
   useEffect(() => {
+  const panel   = document.getElementById('battleLogPanel');
+  const header  = document.getElementById('battleLogHeader');
+  const btnMin  = document.getElementById('battleLogMin');
+  const btnClose= document.getElementById('battleLogClose');
+  const entries = document.getElementById('battleLogEntries');
+  const hint    = document.getElementById('battleLogHint');
+  const resize  = document.getElementById('battleLogResize');
+  if (!panel || !header) return;
+
+  let isDragging = false, isResizing = false;
+  let dragOffX = 0, dragOffY = 0;
+  let startY = 0, startH = 0;
+  let isMinimized = false;
+
+  const onMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      const parent = panel.parentElement!.getBoundingClientRect();
+      let x = e.clientX - parent.left - dragOffX;
+      let y = e.clientY - parent.top  - dragOffY;
+      x = Math.max(0, Math.min(parent.width  - panel.offsetWidth,  x));
+      y = Math.max(0, Math.min(parent.height - panel.offsetHeight, y));
+      panel.style.right  = 'auto';
+      panel.style.bottom = 'auto';
+      panel.style.left   = x + 'px';
+      panel.style.top    = y + 'px';
+    }
+    if (isResizing && entries) {
+      const newH = Math.max(80, Math.min(400, startH + (e.clientY - startY)));
+      entries.style.height = newH + 'px';
+      entries.style.flex   = 'none';
+    }
+  };
+
+  const onMouseUp = () => { isDragging = false; isResizing = false; };
+
+  header.addEventListener('mousedown', (e: MouseEvent) => {
+    const t = e.target as HTMLElement;
+    if (t === btnMin || t === btnClose) return;
+    if (isMinimized) return;
+    isDragging = true;
+    const r = panel.getBoundingClientRect();
+    const p = panel.parentElement!.getBoundingClientRect();
+    dragOffX = e.clientX - (r.left - p.left);
+    dragOffY = e.clientY - (r.top  - p.top);
+  });
+
+  btnMin?.addEventListener('click', () => {
+    isMinimized = !isMinimized;
+    entries?.classList.toggle('minimized', isMinimized);
+    hint?.classList.toggle('visible', isMinimized);
+    if (btnMin) btnMin.textContent = isMinimized ? '+' : '−';
+    if (resize) resize.style.display = isMinimized ? 'none' : '';
+  });
+
+  btnClose?.addEventListener('click', () => { panel.style.display = 'none'; });
+
+  resize?.addEventListener('mousedown', (e: MouseEvent) => {
+    isResizing = true;
+    startY = e.clientY;
+    startH = entries?.offsetHeight ?? 200;
+  });
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup',   onMouseUp);
+
+  return () => {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup',   onMouseUp);
+  };
+}, []);
+
+  useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [battleLog]);
 
-  // ── Sync state จาก backend ──────────────────────────
-  useEffect(() => {
-    if (!gameState) return;
-
-    // อัปเดต placedUnits จาก backend จริง
-    if (phase !== "SETUP_P1" && phase !== "SETUP_P2") {
+  // ── Animation Replay ────────────────────────────────────────
+  // - ไม่ sync placedUnits ก่อน replay
+  // - ขยับ minion ทีละ step ด้วย setPlacedUnits เอง
+  // - หลัง replay จบค่อย sync final state จาก backend
+  const replayLogs = useCallback(async (
+    logs: ActionLogDTO[],
+    finalMinions: typeof gameState extends null ? never : NonNullable<typeof gameState>["minions"],
+    stepDelay: number,
+    onComplete: () => void,
+    addLogFn: (text: string, type: LogEntry["type"]) => void
+  ) => {
+    if (!logs || logs.length === 0) {
+      // ✅ merge กับ prev แทน replace ทั้งหมด เพื่อรักษา minion ที่ frontend เพิ่มไว้
       setPlacedUnits(prev => {
-        const next: Record<string, PlacedUnit> = {};
-        gameState.minions.forEach(m => {
-          const key = `${m.col - 1},${m.row - 1}`;
-          next[key] = {
-            unitId: NAMETAG_TO_ID[m.nameTag] ?? prev[key]?.unitId ?? 1,
-            owner: m.owner, hp: m.hp, maxHp: m.maxHp,
-            spawnId: prev[key]?.spawnId ?? 0,
-          };
+        const next: Record<string, PlacedUnit> = { ...prev };
+        finalMinions.forEach(m => {
+          const key = `${m.col},${m.row}`;
+          next[key] = { unitId: NAMETAG_TO_ID[m.nameTag] ?? prev[key]?.unitId ?? 1, owner: m.owner, hp: m.hp, maxHp: m.maxHp, spawnId: prev[key]?.spawnId ?? 0 };
         });
         return next;
       });
+      onComplete();
+      return;
     }
 
+    // Group by spawnOrder รักษาลำดับ action ของแต่ละ minion
+    const groups = new Map<number, ActionLogDTO[]>();
+    for (const log of logs) {
+      if (!groups.has(log.spawnOrder)) groups.set(log.spawnOrder, []);
+      groups.get(log.spawnOrder)!.push(log);
+    }
+    const sortedGroups = [...groups.entries()].sort((a, b) => a[0] - b[0]);
+
+    // replay ทีละ minion (ทีละ group)
+    for (const [, actions] of sortedGroups) {
+      const minionName = actions[0].minionName;
+      addLogFn(`── ${minionName} ──`, "system");
+
+      for (const log of actions) {
+        const fromKey = `${log.fromCol},${log.fromRow}`;
+        const toKey   = `${log.toCol},${log.toRow}`;
+
+        if (log.type === "MOVE") {
+          // highlight ช่องต้นทาง
+          setExecutingMinionKey(fromKey);
+          setHighlightKey(fromKey);
+          addLogFn(`↳ ${minionName} (${fromKey}) → (${toKey})`, "move");
+          await new Promise(res => setTimeout(res, stepDelay));
+
+          // ✅ ขยับ minion จริงๆ ใน placedUnits
+          setPlacedUnits(prev => {
+            const next = { ...prev };
+            const unit = next[fromKey];
+            if (unit) {
+              delete next[fromKey];
+              next[toKey] = { ...unit };
+            }
+            return next;
+          });
+
+          // highlight ช่องปลายทาง
+          setExecutingMinionKey(toKey);
+          setHighlightKey(toKey);
+          await new Promise(res => setTimeout(res, Math.round(stepDelay * 0.4)));
+
+        } else if (log.type === "SHOOT") {
+          setExecutingMinionKey(fromKey);
+          setHighlightKey(fromKey);
+          addLogFn(`💥 ${minionName} shot ${log.direction} (${log.expenditure})`, "attack");
+          await new Promise(res => setTimeout(res, Math.round(stepDelay * 0.8)));
+        }
+
+        setHighlightKey(null);
+        await new Promise(res => setTimeout(res, 80));
+      }
+
+      setExecutingMinionKey(null);
+      await new Promise(res => setTimeout(res, Math.round(stepDelay * 0.3)));
+    }
+
+    setExecutingMinionKey(null);
+    setHighlightKey(null);
+
+    // ✅ merge final state จาก backend หลัง replay จบ (HP ที่ถูกต้อง, minion ที่ตาย)
+    // ใช้ merge ไม่ใช่ replace เพื่อรักษา minion ที่ frontend เพิ่มไว้
+    setPlacedUnits(prev => {
+      // เริ่มจาก prev แล้ว update เฉพาะตัวที่ backend รู้จัก
+      const next: Record<string, PlacedUnit> = {};
+      // ใส่เฉพาะที่ backend ยังมีชีวิต (minion ที่ตายจะไม่อยู่ใน finalMinions)
+      finalMinions.forEach(m => {
+        const key = `${m.col},${m.row}`;
+        next[key] = { unitId: NAMETAG_TO_ID[m.nameTag] ?? prev[key]?.unitId ?? 1, owner: m.owner, hp: m.hp, maxHp: m.maxHp, spawnId: prev[key]?.spawnId ?? 0 };
+      });
+      return next;
+    });
+
+    onComplete();
+  }, []);
+
+  // ── Sync จาก backend ─────────────────────────────────
+  useEffect(() => {
+    if (!gameState) return;
+
+    // sync territory
     if (gameState.p1Territory?.length > 0)
-      setP1Spawn(gameState.p1Territory.map(h => `${h.col - 1},${h.row - 1}`));
+      setP1Spawn(gameState.p1Territory.map(h => `${h.col},${h.row}`));
     if (gameState.p2Territory?.length > 0)
-      setP2Spawn(gameState.p2Territory.map(h => `${h.col - 1},${h.row - 1}`));
+      setP2Spawn(gameState.p2Territory.map(h => `${h.col},${h.row}`));
 
-    // ── ✅ ถ้ากำลังรอ backend ให้ใช้ผลจาก backend เพื่อเดินหน้า phase
     if (waitingForBackend) {
-      setWaitingForBackend(false);
-      setActionCompleted(false);
-      setSelectedShopUnit(null);
-      setSelectedHex(null);
+      // ❌ ไม่ sync placedUnits ตรงนี้ — replayLogs จะขยับ minion เองทีละ step
 
+      // เก็บ pending state
       if (gameState.gameOver) {
-        setPhase("GAME_OVER");
-        setGameOverData({
+        pendingGameOverRef.current = {
           title: "MISSION COMPLETE",
           winner: gameState.winnerMessage,
           reason: gameState.winnerMessage,
@@ -156,21 +314,52 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
             hp: gameState.players?.[1]?.totalHp ?? 0,
             budget: gameState.players?.[1]?.budget ?? 0,
           },
-        });
-        return;
+        };
+        pendingPhaseRef.current = "GAME_OVER";
+      } else {
+        pendingTurnRef.current = gameState.currentTurn;
+        pendingPhaseRef.current = gameState.currentPlayerIndex === 0 ? "P1_BUY_HEX" : "P2_BUY_HEX";
       }
 
-      // เดินหน้า phase ตาม currentPlayerIndex ของ backend
-      setCurrentTurn(gameState.currentTurn);
-      if (gameState.currentPlayerIndex === 0) {
-        setPhase("P1_BUY_HEX");
-      } else {
-        setPhase("P2_BUY_HEX");
-      }
+      // ✅ ส่ง finalMinions เข้าไปด้วย เพื่อ sync หลัง replay จบ
+      const logs = gameState.actionLogs ?? [];
+      replayLogs(logs, gameState.minions, 600, () => {
+        // apply pending state หลัง replay จบ
+        setWaitingForBackend(false);
+        setActionCompleted(false);
+        setSelectedShopUnit(null);
+        setSelectedHex(null);
+
+        if (pendingGameOverRef.current) {
+          setGameOverData(pendingGameOverRef.current);
+          setPhase("GAME_OVER");
+          pendingGameOverRef.current = null;
+        } else {
+          if (pendingTurnRef.current !== null) setCurrentTurn(pendingTurnRef.current);
+          if (pendingPhaseRef.current !== null) setPhase(pendingPhaseRef.current);
+          pendingTurnRef.current  = null;
+          pendingPhaseRef.current = null;
+        }
+      }, addLog);
       return;
     }
 
-    // game over จาก backend โดยไม่ได้ผ่าน waitingForBackend
+    // sync เฉพาะ non-setup phases ปกติ
+    if (phase !== "SETUP_P1" && phase !== "SETUP_P2") {
+      setPlacedUnits(prev => {
+        const next: Record<string, PlacedUnit> = {};
+        gameState.minions.forEach(m => {
+          const key = `${m.col},${m.row}`;
+          next[key] = {
+            unitId: NAMETAG_TO_ID[m.nameTag] ?? prev[key]?.unitId ?? 1,
+            owner: m.owner, hp: m.hp, maxHp: m.maxHp,
+            spawnId: prev[key]?.spawnId ?? 0,
+          };
+        });
+        return next;
+      });
+    }
+
     if (gameState.gameOver && phase !== "GAME_OVER") {
       setPhase("GAME_OVER");
       setGameOverData({
@@ -192,15 +381,15 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
   }, [gameState]);
 
   const addLog = (text: string, type: LogEntry["type"] = "info") => {
-    setBattleLog(prev => [...prev.slice(-49), { id: logCounter, text, type }]);
+    setBattleLog(prev => [...prev.slice(-49), { id: Date.now() + Math.random(), text, type }]);
     setLogCounter(c => c + 1);
   };
 
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
   const getAdjacentHexes = (col: number, row: number) => {
-    const isOddCol = col % 2 !== 0;
-    return isOddCol
+    const isEvenCol = col % 2 === 0;
+    return isEvenCol
       ? [`${col},${row-1}`,`${col},${row+1}`,`${col-1},${row-1}`,`${col+1},${row-1}`,`${col-1},${row}`,`${col+1},${row}`]
       : [`${col},${row-1}`,`${col},${row+1}`,`${col-1},${row}`,`${col+1},${row}`,`${col-1},${row+1}`,`${col+1},${row+1}`];
   };
@@ -218,7 +407,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
       const [q, r] = hex.split(",").map(Number);
       getAdjacentHexes(q, r).forEach(n => {
         const [nCol, nRow] = n.split(",").map(Number);
-        if (nCol >= 0 && nCol <= 7 && nRow >= 0 && nRow <= 7)
+        if (nCol >= 1 && nCol <= 8 && nRow >= 1 && nRow <= 8)
           if (!myZone.includes(n) && !enemyZone.includes(n) && !placedUnits[n])
             purchasable.add(n);
       });
@@ -243,7 +432,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
   };
 
   const handleHexClick = (q: number, r: number) => {
-    if (isExecuting || isP2BotTurn) return;
+    if (isExecuting || isP2BotTurn || waitingForBackend) return;
 
     const coordKey = `${q},${r}`;
     const isOccupied = !!placedUnits[coordKey];
@@ -259,10 +448,10 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
         [coordKey]: { unitId: selectedShopUnit, owner: 1, hp: activeConfig.initHp, maxHp: activeConfig.initHp, spawnId: spawnCounter },
       }));
       setSpawnCounter(c => c + 1);
-      sendAction({ playerIndex: 0, actionType: "SPAWN", row: r + 1, col: q + 1, unitId: selectedShopUnit });
+      sendAction({ playerIndex: 0, actionType: "SPAWN", row: r, col: q, unitId: selectedShopUnit });
       setSelectedShopUnit(null);
       setActionCompleted(true);
-      setTimeout(() => handleNextPhase(true), 300);
+      setWaitingForBackend(true);
 
     } else if (phase === "P1_BUY_HEX") {
       if (actionCompleted) { alert("PURCHASE LIMIT REACHED."); return; }
@@ -271,7 +460,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
       if (isOccupied) { alert("CANNOT BUY HEX. A MINION IS BLOCKING."); return; }
       if (p1Budget < activeConfig.hexPurchaseCost) { alert("INSUFFICIENT FUNDS."); return; }
       setP1Spawn(prev => [...prev, coordKey]);
-      sendAction({ playerIndex: 0, actionType: "PURCHASE_HEX", row: r + 1, col: q + 1 });
+      sendAction({ playerIndex: 0, actionType: "PURCHASE_HEX", row: r, col: q });
       setActionCompleted(true);
       setTimeout(() => handleNextPhase(true), 300);
 
@@ -288,7 +477,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
         ...prev,
         [coordKey]: { unitId: selectedShopUnit, owner: 1, hp: activeConfig.initHp, maxHp: activeConfig.initHp, spawnId: spawnCounter },
       }));
-      sendAction({ playerIndex: 0, actionType: "SPAWN", row: r + 1, col: q + 1, unitId: selectedShopUnit });
+      sendAction({ playerIndex: 0, actionType: "SPAWN", row: r, col: q, unitId: selectedShopUnit });
       setSpawnCounter(c => c + 1);
       setSelectedShopUnit(null);
       setActionCompleted(true);
@@ -296,52 +485,48 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
     }
   };
 
-  // ── ✅ executeScripts — ส่ง END_TURN แล้วรอ backend ตอบกลับ
   const executeScripts = async (playerIndex: 0 | 1) => {
     setIsExecuting(true);
-    const ownerNum = playerIndex + 1;
-    addLog(`── P${ownerNum} EXECUTING SCRIPTS ──`, "system");
+    addLog(`── P${playerIndex + 1} EXECUTING SCRIPTS ──`, "system");
     await delay(800);
     sendAction({ playerIndex, actionType: "END_TURN" });
-    addLog(`── P${ownerNum} WAITING FOR RESULT... ──`, "system");
-    setWaitingForBackend(true); // ✅ รอ backend ตอบ — phase จะถูก set ใน useEffect ด้านบน
+    addLog(`── P${playerIndex + 1} WAITING FOR RESULT... ──`, "system");
+    setWaitingForBackend(true);
     setExecutingMinionKey(null);
     setIsExecuting(false);
-    // ❌ ลบ handleNextPhaseAfterAction ออกแล้ว
   };
 
-  // ── Bot (P2 only) ─────────────────────────────────────
+  const p1SpawnsLeft = gameState?.players?.[0]?.spawnsLeft ?? activeConfig.maxSpawns;
+  const p2SpawnsLeft = gameState?.players?.[1]?.spawnsLeft ?? activeConfig.maxSpawns;
+
   const simulateBotTurn = async (playerIdx: number) => {
     const myZone    = p2Spawn;
     const enemyZone = p1Spawn;
     const budget    = p2Budget;
-    const shouldBuyHex = Math.random() < 0.3;
-    const shouldSpawn  = Math.random() < 0.6;
 
     addLog(`🤖 BOT P2 thinking...`, "system");
     await delay(800);
 
-    if (budget >= activeConfig.hexPurchaseCost && shouldBuyHex) {
+    if (budget >= activeConfig.hexPurchaseCost && Math.random() < 0.3) {
       const purchasable = myZone.flatMap(hex => {
         const [q, r] = hex.split(",").map(Number);
         return getAdjacentHexes(q, r).filter(n => {
           const [nc, nr] = n.split(",").map(Number);
-          return nc >= 0 && nc <= 7 && nr >= 0 && nr <= 7
+          return nc >= 1 && nc <= 8 && nr >= 1 && nr <= 8
             && !myZone.includes(n) && !enemyZone.includes(n) && !placedUnits[n];
         });
       });
       if (purchasable.length > 0) {
         const pick = purchasable[Math.floor(Math.random() * purchasable.length)];
         const [col, row] = pick.split(",").map(Number);
-        sendAction({ playerIndex: playerIdx, actionType: "PURCHASE_HEX", row: row + 1, col: col + 1 });
+        sendAction({ playerIndex: playerIdx, actionType: "PURCHASE_HEX", row, col });
         setP2Spawn(prev => [...prev, pick]);
         addLog(`🤖 BOT bought hex (${pick})`, "info");
         await delay(500);
       }
     }
 
-    const currentCount = Object.values(placedUnits).filter(u => u.owner === 2).length;
-    if (budget >= activeConfig.spawnCost && currentCount < activeConfig.maxSpawns && shouldSpawn) {
+    if (budget >= activeConfig.spawnCost && p2SpawnsLeft > 0 && Math.random() < 0.6) {
       const emptyHexes = myZone.filter(h => !placedUnits[h]);
       if (emptyHexes.length > 0 && playerDeckUnits.length > 0) {
         const pick = emptyHexes[Math.floor(Math.random() * emptyHexes.length)];
@@ -353,7 +538,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
           [pick]: { unitId: unit.id, owner: 2, hp: activeConfig.initHp, maxHp: activeConfig.initHp, spawnId: spawnCounter },
         }));
         setSpawnCounter(c => c + 1);
-        sendAction({ playerIndex: playerIdx, actionType: "SPAWN", row: row + 1, col: col + 1, unitId: unit.id });
+        sendAction({ playerIndex: playerIdx, actionType: "SPAWN", row, col, unitId: unit.id });
         addLog(`🤖 BOT deployed ${unit.name} at (${pick})`, "info");
         await delay(600);
       }
@@ -361,7 +546,6 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
     await executeScripts(1);
   };
 
-  // ── Bot setup turn ────────────────────────────────────
   const simulateBotSetup = async () => {
     addLog(`🤖 BOT P2 deploying starter...`, "system");
     await delay(800);
@@ -376,16 +560,12 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
         [pick]: { unitId: unit.id, owner: 2, hp: activeConfig.initHp, maxHp: activeConfig.initHp, spawnId: spawnCounter },
       }));
       setSpawnCounter(c => c + 1);
-      sendAction({ playerIndex: 1, actionType: "SPAWN", row: row + 1, col: col + 1, unitId: unit.id });
+      sendAction({ playerIndex: 1, actionType: "SPAWN", row, col, unitId: unit.id });
       addLog(`🤖 BOT deployed ${unit.name} at (${pick})`, "info");
     }
-    await delay(400);
-    setCurrentTurn(1);
-    setPhase("P1_BUY_HEX");
-    setActionCompleted(false);
+    setWaitingForBackend(true);
   };
 
-  // ── Auto-trigger bot phases ───────────────────────────
   useEffect(() => {
     if (isExecuting || waitingForBackend) return;
     if (phase === "SETUP_P2") {
@@ -395,7 +575,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
     } else if (phase === "P2_ACTION") {
       simulateBotTurn(1);
     }
-  }, [phase]);
+  }, [phase, waitingForBackend]);
 
   const handleNextPhase = (isAutoAdvance = false) => {
     const isSetupPhase = phase === "SETUP_P1";
@@ -407,7 +587,6 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
     setSelectedShopUnit(null);
     setSelectedHex(null);
     switch (phase) {
-      case "SETUP_P1":    setPhase("SETUP_P2"); break;
       case "P1_BUY_HEX": setPhase("P1_SPAWN"); break;
       case "P1_SPAWN":    setPhase("P1_ACTION"); break;
       case "P1_ACTION":   executeScripts(0); break;
@@ -421,7 +600,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
   const isActionPhase = phase === "P1_ACTION" || phase === "P2_ACTION";
 
   const getPhaseInstruction = () => {
-    if (waitingForBackend) return "⏳ WAITING FOR SERVER RESULT...";
+    if (waitingForBackend) return "⚡ REPLAYING ACTIONS...";
     if (isExecuting) return "⚡ EXECUTING BATTLE SCRIPTS...";
     switch (phase) {
       case "SETUP_P1":    return "P1 SETUP: PLACE 1 STARTING MINION (FREE)";
@@ -436,9 +615,6 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
     }
   };
 
-  const p1Minions = Object.values(placedUnits).filter(u => u.owner === 1).length;
-  const p2Minions = Object.values(placedUnits).filter(u => u.owner === 2).length;
-
   const renderGrid = () => {
     const purchasableHexes = getPurchasableHexes();
     const spawnableHexes   = getSpawnableHexes();
@@ -450,6 +626,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
           const unit = placedUnits[coordKey];
           const unitData = unit ? RACES.find(u => u.id === unit.unitId) : null;
           const isExecutingThis = executingMinionKey === coordKey;
+          const isHighlighted   = highlightKey === coordKey; // ✅ animation highlight
           let spawnClass = "";
           if (p1Spawn.includes(coordKey)) spawnClass = "spawn-p1";
           if (p2Spawn.includes(coordKey)) spawnClass = "spawn-p2";
@@ -457,10 +634,13 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
             <div key={`row-${row}`} className="hex-row">
               <div
                 className={[
-                  "hex-cell", isSelected ? "active" : "", spawnClass,
-                  purchasableHexes.includes(coordKey) ? "highlight-buy" : "",
-                  spawnableHexes.includes(coordKey) ? "highlight-spawn" : "",
-                  isExecutingThis ? "hex-executing" : "",
+                  "hex-cell",
+                  isSelected      ? "active"         : "",
+                  spawnClass,
+                  purchasableHexes.includes(coordKey) ? "highlight-buy"   : "",
+                  spawnableHexes.includes(coordKey)   ? "highlight-spawn" : "",
+                  isExecutingThis ? "hex-executing"   : "",
+                  isHighlighted   ? "hex-highlight"   : "", // ✅
                 ].join(" ")}
                 onClick={() => handleHexClick(col, row)}
               >
@@ -525,7 +705,6 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
       {!connected && (
         <div className="disconnected-banner">⚠️ DISCONNECTED FROM SERVER — Reconnecting...</div>
       )}
-
       <div className="game-header">
         <h1 className="main-title">MISSION: SOLITAIRE MODE</h1>
         <p className="turn-counter">TURN {String(currentTurn).padStart(2, "0")} / {activeConfig.maxTurns}</p>
@@ -533,15 +712,13 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
           {getPhaseInstruction()}
         </div>
       </div>
-
       <div className="game-body">
-        {/* LEFT: P1 (Human) */}
         <aside className="player-panel left" style={{ opacity: isP1Active ? 1 : 0.5 }}>
           <div className={`info-card ${isP1Active ? "neon-border-blue" : ""}`}>
             <h2 className="player-tag">COMMANDER 01</h2>
             <div className="stats">
               <p>BUDGET: <span className="val">{p1Budget.toLocaleString()} / {activeConfig.maxBudget}</span></p>
-              <p>MINIONS: <span className="val">{p1Minions} / {activeConfig.maxSpawns}</span></p>
+              <p>MINIONS: <span className="val">{p1SpawnsLeft} spawns left</span></p>
             </div>
           </div>
           <div className="minion-list-panel">
@@ -566,19 +743,15 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
             </div>
           )}
         </aside>
-
-        {/* CENTER: GRID */}
         <main className="battle-arena">
           <div className="hex-grid">{renderGrid()}</div>
         </main>
-
-        {/* RIGHT: P2 (Bot) */}
         <aside className="player-panel right" style={{ opacity: isP2BotTurn ? 1 : 0.5 }}>
           <div className={`info-card ${isP2BotTurn ? "neon-border-red" : ""}`}>
             <h2 className="player-tag" style={{ color: "#ff7700" }}>🤖 BOT</h2>
             <div className="stats">
               <p>BUDGET: <span className="val">{p2Budget.toLocaleString()} / {activeConfig.maxBudget}</span></p>
-              <p>MINIONS: <span className="val">{p2Minions} / {activeConfig.maxSpawns}</span></p>
+              <p>MINIONS: <span className="val">{p2SpawnsLeft} spawns left</span></p>
             </div>
           </div>
           <div className="minion-list-panel">
@@ -594,31 +767,36 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
           </div>
         </aside>
       </div>
-
-      {/* Battle Log */}
       {(isActionPhase || isExecuting || waitingForBackend) && (
-        <div className="battle-log-panel">
-          <div className="battle-log-title">⚡ BATTLE LOG</div>
-          <div className="battle-log-entries">
+        
+        <div className="battle-log-panel" id="battleLogPanel">
+          <div className="battle-log-title" id="battleLogHeader">
+            <span className="battle-log-title-text">⚡ BATTLE LOG</span>
+            <div className="battle-log-controls">
+              <button className="battle-log-btn battle-log-btn-min" id="battleLogMin">−</button>
+              <button className="battle-log-btn battle-log-btn-close" id="battleLogClose">×</button>
+            </div>
+          </div>
+          <div className="battle-log-minimized-hint" id="battleLogHint">— MINIMIZED —</div>
+          <div className="battle-log-entries" id="battleLogEntries">
             {battleLog.map(entry => (
-              <div key={entry.id} className={`log-entry log-${entry.type}`}>{entry.text}</div>
+            <div key={entry.id} className={`log-entry log-${entry.type}`}>{entry.text}</div>
             ))}
             <div ref={logEndRef} />
           </div>
+          <div className="battle-log-resize" id="battleLogResize" />
         </div>
       )}
-
-      {/* Action Bar */}
       <div className="arena-actions">
         {!isP2BotTurn && (() => {
           const isSetupPhase = phase === "SETUP_P1";
-          const isDisabled   = phase === "GAME_OVER" || (isSetupPhase && !actionCompleted) || isExecuting || waitingForBackend;
+          const isDisabled = phase === "GAME_OVER" || (isSetupPhase && !actionCompleted) || isExecuting || waitingForBackend;
           let buttonText = "SKIP THIS ACTION";
-          let btnClass   = "btn-space primary";
-          if (isActionPhase)         { buttonText = isExecuting ? "EXECUTING..." : "▶ EXECUTE BATTLE SCRIPTS"; btnClass = "btn-space execute"; }
-          else if (waitingForBackend){ buttonText = "⏳ WAITING..."; }
-          else if (actionCompleted)    buttonText = "CONFIRM & NEXT";
-          else if (isSetupPhase)       buttonText = "DEPLOYMENT REQUIRED";
+          let btnClass = "btn-space primary";
+          if (isActionPhase)        { buttonText = isExecuting ? "EXECUTING..." : "▶ EXECUTE BATTLE SCRIPTS"; btnClass = "btn-space execute"; }
+          else if (waitingForBackend) buttonText = "⚡ REPLAYING...";
+          else if (actionCompleted)   buttonText = "CONFIRM & NEXT";
+          else if (isSetupPhase)      buttonText = "DEPLOYMENT REQUIRED";
           return (
             <button
               className={`${btnClass} ${isDisabled ? "disabled-btn" : ""}`}
@@ -639,13 +817,11 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
           ABORT MISSION
         </button>
       </div>
-
-      {/* Game Over Modal */}
       {phase === "GAME_OVER" && gameOverData && (
         <div className="game-over-overlay">
           <div className={`game-over-modal ${
-            gameOverData.winner.includes("01") ? "win-p1"
-            : gameOverData.winner.includes("BOT") ? "win-p2"
+            gameOverData.winner.includes("1") ? "win-p1"
+            : gameOverData.winner.includes("2") ? "win-p2"
             : "draw"
           }`}>
             <h1 className="glitch-text">{gameOverData.title}</h1>
