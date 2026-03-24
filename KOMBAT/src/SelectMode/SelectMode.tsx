@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./SelectMode.css";
-import GameSettings, { type GameConfigData } from "../Gamesetting/GameSetting"; // อย่าลืม Import Component Settings มาด้วยนะครับ
+import GameSettings, { type GameConfigData } from "../Gamesetting/GameSetting"; 
 
 // --- Icons Components (SVG) ---
 const IconDuel = () => (
@@ -71,7 +71,6 @@ const IconSetting = () => (
 interface ModeSelectProps {
   onConfirm: (mode: string) => void;
   onBack: () => void;
-  // Optional: ถ้าต้องการส่ง config กลับไปที่ Parent Component
   onConfigUpdate?: (config: GameConfigData) => void;
   currentConfig: GameConfigData;
 }
@@ -91,16 +90,14 @@ const ModeSelect: React.FC<ModeSelectProps> = ({
   currentConfig,
 }) => {
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
-
-  // State ควบคุมการเปิดปิด Modal Setting
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const modes: ModeData[] = [
     {
       id: "duel",
-      title: "DUEL",
-      subtitle: "PvP COMBAT",
-      description: "Challenge other players in real-time tactical warfare.",
+      title: "HOST DUEL",
+      subtitle: "CREATE PvP ROOM",
+      description: "Generate a secure room code and wait an opponent to your battlefield.",
       icon: <IconDuel />,
     },
     {
@@ -126,24 +123,19 @@ const ModeSelect: React.FC<ModeSelectProps> = ({
     },
   ];
 
-  // Logic เมื่อกดปุ่ม Confirm/Select บนการ์ด
   const handleActionClick = (modeId: string) => {
     if (modeId === "setting") {
-      // ถ้าเป็น Setting ให้เปิด Modal
       setIsSettingsOpen(true);
     } else {
-      // ถ้าเป็นโหมดอื่น ให้ส่งค่ากลับไปตามปกติ
-      onConfirm(modeId);
+      onConfirm(modeId); // ── เมื่อกด duel ส่งไป App.tsx จะกลายเป็น Role HOST อัตโนมัติ ──
     }
   };
 
-  // Logic เมื่อ Save Config จาก Modal
   const handleSaveConfig = (newConfig: GameConfigData) => {
     console.log("Configuration Updated:", newConfig);
     if (onConfigUpdate) {
       onConfigUpdate(newConfig);
     }
-    // ตรงนี้อาจจะเพิ่ม Toast Notification ว่า "Saved" ก็ได้
   };
 
   return (
@@ -173,7 +165,6 @@ const ModeSelect: React.FC<ModeSelectProps> = ({
                 handleActionClick(mode.id);
               }}
             >
-              {/* เปลี่ยนข้อความปุ่มถ้าเป็น Setting */}
               {mode.id === "setting"
                 ? "CONFIGURE"
                 : selectedMode === mode.id
@@ -187,9 +178,7 @@ const ModeSelect: React.FC<ModeSelectProps> = ({
         ))}
       </div>
 
-      <div
-        style={{ marginTop: "40px", zIndex: 20, display: "flex", gap: "20px" }}
-      >
+      <div style={{ marginTop: "40px", zIndex: 20, display: "flex", gap: "20px" }}>
         <button className="back-btn" onClick={onBack}>
           &lt; BACK TO CONFIG
         </button>

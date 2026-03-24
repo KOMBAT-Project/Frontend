@@ -1,0 +1,610 @@
+/* ══════════════════════════════════════════════
+   DuelLobby.css  —  Space / Military theme
+   matches GameScreen.css aesthetic
+   ══════════════════════════════════════════════ */
+
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap");
+
+/* ── Root ────────────────────────────────────── */
+.duel-lobby {
+  position: relative;
+  width: 100vw;   /* กางเต็มความกว้างจอ */
+  height: 100vh;  /* กางเต็มความสูงจอ */
+  background: #040810;
+  color: #c8d8f0;
+  font-family: "Orbitron", monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* จัดให้อยู่กึ่งกลางหน้าจอพอดี */
+  overflow: hidden;        /* ป้องกัน Scrollbar โผล่แบบหน้าเลือกโหมด */
+}
+
+/* ── Background grid ──────────────────────────── */
+.dl-grid-bg {
+  position: absolute;
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 180, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 180, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.dl-scan-line {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 180, 255, 0.012) 3px,
+    rgba(0, 180, 255, 0.012) 4px
+  );
+  pointer-events: none;
+}
+
+/* ── Header ───────────────────────────────────── */
+.dl-header {
+  position: relative;
+  text-align: center;
+  padding: 48px 24px 32px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.dl-header-accent {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #00b4ff80);
+  max-width: 200px;
+}
+.dl-header-accent.right {
+  background: linear-gradient(90deg, #00b4ff80, transparent);
+}
+
+.dl-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  color: #fff;
+  text-shadow:
+    0 0 20px rgba(0, 180, 255, 0.8),
+    0 0 60px rgba(0, 180, 255, 0.3);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.dl-subtitle {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  color: #00b4ff99;
+  margin: 6px 0 0;
+  font-family: "Share Tech Mono", monospace;
+}
+
+/* ── Content wrapper ──────────────────────────── */
+.dl-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px; /* ขยายให้กว้างเท่ากับหน้าเลือกโหมด */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* ดันเนื้อหาให้อยู่กลางจอแนวตั้ง */
+  z-index: 1;
+  padding: 20px;
+}
+
+.dl-instruction {
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  color: #00b4ffaa;
+  text-align: center;
+  margin: 0 0 40px;
+}
+
+/* ── SELECT VIEW — role cards ─────────────────── */
+.dl-select-view {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dl-role-cards {
+  display: flex;
+  gap: 30px; /* ใช้ระยะห่างเท่ากับหน้าเลือกโหมด */
+  align-items: stretch;
+  width: 100%;
+  max-width: 900px; /* ปรับความกว้างรวมของ 2 Card */
+  justify-content: center;
+}
+
+.dl-role-card {
+  flex: 1;
+  min-height: 400px; /* ให้ความสูงเท่าๆ กับ Card ในหน้าเลือกโหมด */
+  background: rgba(0, 20, 45, 0.7);
+  background: rgba(0, 20, 45, 0.7);
+  border: 1px solid rgba(0, 180, 255, 0.2);
+  cursor: pointer;
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  transition: all 0.25s ease;
+  font-family: "Orbitron", monospace;
+  color: #c8d8f0;
+  overflow: hidden;
+}
+
+.dl-role-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.dl-role-card.host::before {
+  background: radial-gradient(ellipse at 50% 0%, rgba(0, 180, 255, 0.12) 0%, transparent 70%);
+}
+.dl-role-card.join::before {
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 60, 60, 0.12) 0%, transparent 70%);
+}
+
+.dl-role-card:hover:not(:disabled)::before { opacity: 1; }
+
+.dl-role-card.host:hover:not(:disabled) {
+  border-color: rgba(0, 180, 255, 0.6);
+  box-shadow: 0 0 30px rgba(0, 180, 255, 0.15), inset 0 0 30px rgba(0, 180, 255, 0.05);
+}
+.dl-role-card.join:hover:not(:disabled) {
+  border-color: rgba(255, 60, 60, 0.6);
+  box-shadow: 0 0 30px rgba(255, 60, 60, 0.15), inset 0 0 30px rgba(255, 60, 60, 0.05);
+}
+
+.dl-role-card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dl-role-icon {
+  margin-bottom: 8px;
+}
+.dl-role-card.host .dl-role-icon { color: #00b4ff; }
+.dl-role-card.join  .dl-role-icon { color: #ff3c3c; }
+
+.dl-role-badge {
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  padding: 3px 12px;
+  border-radius: 2px;
+}
+.dl-role-card.host .dl-role-badge {
+  background: rgba(0, 180, 255, 0.15);
+  border: 1px solid rgba(0, 180, 255, 0.4);
+  color: #00b4ff;
+}
+.dl-role-card.join .dl-role-badge {
+  background: rgba(255, 60, 60, 0.15);
+  border: 1px solid rgba(255, 60, 60, 0.4);
+  color: #ff6060;
+}
+
+.dl-role-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #fff;
+}
+
+.dl-role-desc {
+  font-size: 0.65rem;
+  font-family: "Share Tech Mono", monospace;
+  color: #7899c0;
+  text-align: center;
+  line-height: 1.6;
+  letter-spacing: 0.05em;
+}
+
+/* corner decorations */
+.dl-role-corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+}
+.dl-role-card.host .dl-role-corner { border-color: rgba(0, 180, 255, 0.4); }
+.dl-role-card.join  .dl-role-corner { border-color: rgba(255, 60, 60, 0.4); }
+
+.dl-role-corner.tl { top: 8px;    left: 8px;  border-top: 1px solid; border-left: 1px solid; }
+.dl-role-corner.tr { top: 8px;    right: 8px; border-top: 1px solid; border-right: 1px solid; }
+.dl-role-corner.bl { bottom: 8px; left: 8px;  border-bottom: 1px solid; border-left: 1px solid; }
+.dl-role-corner.br { bottom: 8px; right: 8px; border-bottom: 1px solid; border-right: 1px solid; }
+
+.dl-role-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #2a4060;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+.dl-conn-warning {
+  margin-top: 32px;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: #ffaa00;
+  font-family: "Share Tech Mono", monospace;
+}
+
+/* ── HOST WAITING VIEW ────────────────────────── */
+.dl-host-view {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+}
+
+.dl-room-block {
+  width: 100%;
+  text-align: center;
+  background: rgba(0, 20, 45, 0.8);
+  border: 1px solid rgba(0, 180, 255, 0.25);
+  padding: 40px 32px 32px;
+  position: relative;
+}
+.dl-room-block::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00b4ff, transparent);
+}
+
+.dl-room-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.35em;
+  color: #00b4ff88;
+  margin: 0 0 20px;
+}
+
+.dl-room-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.dl-room-code {
+  display: flex;
+  gap: 6px;
+}
+
+.dl-code-char {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 64px;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #00e5ff;
+  background: rgba(0, 180, 255, 0.06);
+  border: 1px solid rgba(0, 180, 255, 0.3);
+  letter-spacing: 0;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+}
+
+.dl-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 180, 255, 0.1);
+  border: 1px solid rgba(0, 180, 255, 0.35);
+  color: #00b4ff;
+  font-family: "Orbitron", monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dl-copy-btn:hover {
+  background: rgba(0, 180, 255, 0.2);
+  border-color: rgba(0, 180, 255, 0.6);
+}
+
+.dl-room-hint {
+  font-size: 0.6rem;
+  font-family: "Share Tech Mono", monospace;
+  color: #4a6888;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+/* Player slots */
+.dl-player-slots {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dl-slot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  font-family: "Share Tech Mono", monospace;
+  border: 1px solid;
+  transition: all 0.3s;
+}
+.dl-slot.filled {
+  border-color: rgba(0, 255, 150, 0.3);
+  background: rgba(0, 255, 150, 0.04);
+  color: #00ff96;
+}
+.dl-slot.empty {
+  border-color: rgba(100, 130, 160, 0.2);
+  background: rgba(0, 20, 40, 0.4);
+  color: #4a6888;
+}
+
+.dl-slot-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dl-slot-dot.filled {
+  background: #00ff96;
+  box-shadow: 0 0 8px #00ff96;
+  animation: pulse-dot 1.5s infinite;
+}
+.dl-slot-dot.empty {
+  background: transparent;
+  border: 1px solid #4a6888;
+  animation: blink-dot 1s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+@keyframes blink-dot {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+
+.dl-start-block { text-align: center; }
+
+.dl-ready-msg {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: #00ffaa;
+  text-shadow: 0 0 12px rgba(0, 255, 170, 0.5);
+  animation: flicker 0.8s infinite;
+  margin: 0;
+}
+
+.dl-waiting-msg {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: #4a7090;
+  font-family: "Share Tech Mono", monospace;
+  margin: 0;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+/* ── JOIN INPUT VIEW ──────────────────────────── */
+.dl-join-view {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+.dl-code-input-block {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  position: relative; /* <== เพิ่มบรรทัดนี้ */
+  cursor: text;
+}
+
+.dl-code-display {
+  display: flex;
+  gap: 8px;
+}
+
+.dl-code-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 70px;
+  font-size: 1.8rem;
+  font-weight: 900;
+  border: 1px solid;
+  letter-spacing: 0;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.dl-code-slot.filled {
+  color: #ff6060;
+  background: rgba(255, 60, 60, 0.06);
+  border-color: rgba(255, 60, 60, 0.4);
+  text-shadow: 0 0 10px rgba(255, 60, 60, 0.5);
+}
+
+.dl-code-slot.empty {
+  color: transparent;
+  background: rgba(255, 60, 60, 0.02);
+  border-color: rgba(255, 60, 60, 0.15);
+}
+
+.dl-code-slot.cursor::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: #ff6060;
+  animation: cursor-blink 0.8s infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.dl-hidden-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: text;
+  /* เอา pointer-events: none ออก !สำคัญมาก */
+}
+
+.dl-tap-hint {
+  background: none;
+  border: 1px dashed rgba(255, 60, 60, 0.2);
+  color: #ff606066;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dl-tap-hint:hover {
+  border-color: rgba(255, 60, 60, 0.4);
+  color: #ff6060aa;
+}
+
+.dl-error-msg {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: #ff4444;
+  font-family: "Share Tech Mono", monospace;
+  text-align: center;
+  animation: shake 0.3s ease;
+  margin: 0;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-6px); }
+  75%       { transform: translateX(6px); }
+}
+
+.dl-join-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.dl-confirm-btn {
+  width: 100%;
+  max-width: 360px;
+  padding: 16px;
+  font-family: "Orbitron", monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 60, 60, 0.2), rgba(255, 60, 60, 0.08));
+  border: 1px solid rgba(255, 60, 60, 0.5);
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.dl-confirm-btn::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 60, 60, 0.1), transparent);
+  transition: left 0.4s;
+}
+.dl-confirm-btn:hover:not(:disabled)::before { left: 100%; }
+.dl-confirm-btn:hover:not(:disabled) {
+  border-color: rgba(255, 60, 60, 0.8);
+  box-shadow: 0 0 20px rgba(255, 60, 60, 0.2);
+}
+.dl-confirm-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Shared back button ───────────────────────── */
+.dl-back-btn {
+  background: none;
+  border: none;
+  color: #4a6888;
+  font-family: "Orbitron", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  padding: 8px 0;
+  transition: color 0.2s;
+}
+.dl-back-btn:hover { color: #a0c0e0; }
+
+/* ── Footer back (SELECT view) ────────────────── */
+.dl-footer-back {
+  position: relative;
+  z-index: 1;
+  background: none;
+  border: none;
+  color: #3a5870;
+  font-family: "Orbitron", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  padding: 20px;
+  transition: color 0.2s;
+  margin-bottom: 20px;
+}
+.dl-footer-back:hover { color: #8ab0d0; }
+
+/* ── Responsive ───────────────────────────────── */
+@media (max-width: 600px) {
+  .dl-role-cards { flex-direction: column; }
+  .dl-role-divider { padding: 12px 0; }
+  .dl-code-char, .dl-code-slot { width: 40px; height: 52px; font-size: 1.4rem; }
+  .dl-header { flex-direction: column; gap: 8px; }
+  .dl-header-accent { display: none; }
+}
