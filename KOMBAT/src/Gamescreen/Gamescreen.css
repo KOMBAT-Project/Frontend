@@ -424,3 +424,46 @@
 
 @keyframes fadeInModal  { to { opacity: 1; } }
 @keyframes slideUpModal { to { transform: translateY(0); } }
+
+
+.my-turn-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  text-align: center;
+  padding: 6px 0;
+  font-family: "Orbitron", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  transition: all 0.3s;
+}
+.my-turn-active  { background: rgba(0,255,150,0.15); color: #00ff96; border-bottom: 1px solid rgba(0,255,150,0.3); }
+.my-turn-waiting { background: rgba(100,130,160,0.08); color: #4a6888; border-bottom: 1px solid rgba(100,130,160,0.15); }
+ 
+.my-role-badge {
+  margin-left: 16px;
+  font-size: 0.6rem;
+  opacity: 0.7;
+  letter-spacing: 0.15em;
+}
+.you-badge {
+  font-size: 0.6rem;
+  color: #00ff96;
+  margin-left: 6px;
+}
+.panel-locked { position: relative; }
+.locked-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Orbitron", monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: #4a6888;
+  pointer-events: none;
+  z-index: 10;
+}

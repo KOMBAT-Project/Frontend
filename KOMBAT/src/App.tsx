@@ -6,12 +6,10 @@ import ModeSelect from "../src/SelectMode/SelectMode";
 import GameScreenDuel from "./Gamescreen/GameScreenduel";
 import GameScreenSolitaire from "./Gamescreen/Gamescreensolitaire";
 import GameScreenAuto from "./Gamescreen/Gamescreenauto";
+import DuelLobby from "./SelectMode/DuelLobby/DuelLobby";
 import { startGame } from "./api/gameApi";
-
-// Import Settings และ Type
 import GameSettings, { type GameConfigData } from "./Gamesetting/GameSetting";
 
-// ค่า Default เริ่มต้น
 const DEFAULT_CONFIG: GameConfigData = {
   spawnCost: 100,
   hexPurchaseCost: 1000,
@@ -24,98 +22,94 @@ const DEFAULT_CONFIG: GameConfigData = {
   maxSpawns: 47,
 };
 
-// ยุบ GAME1, GAME2, GAME3 ให้เหลือแค่ GAME เดียว
 type ScreenState =
   | "LOBBY"
   | "SELECT_MINIONS"
   | "CONFIG_MINIONS"
   | "SELECTMODE"
+  | "DUEL_LOBBY"
   | "DUEL"
   | "SOLITAIRE"
   | "AUTO";
 
 function App() {
-  const [screen, setScreen] = useState<ScreenState>("LOBBY");
-
-  // State สำหรับ System Config
-  const [gameConfig, setGameConfig] = useState<GameConfigData>(DEFAULT_CONFIG);
+  const [screen, setScreen]           = useState<ScreenState>("LOBBY");
+  const [gameConfig, setGameConfig]   = useState<GameConfigData>(DEFAULT_CONFIG);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedTeam, setSelectedTeam]     = useState<number[]>([]);
+  const [teamConfig, setTeamConfig]         = useState<any>({});
+  const [gameMode, setGameMode]             = useState<string>("");
 
-  // State สำหรับเก็บทีมที่เลือก
-  const [selectedTeam, setSelectedTeam] = useState<number[]>([]);
+  // เก็บ playerIndex จาก DuelLobby (0 = host, 1 = guest)
+  const [myPlayerIndex, setMyPlayerIndex]   = useState<number>(0);
+  
+  // ── เพิ่ม State เพื่อจำว่าเข้า DuelLobby มาด้วยโหมดไหน (HOST หรือ JOIN)
+  const [duelRole, setDuelRole] = useState<"HOST" | "JOIN">("HOST");
 
-  const [teamConfig, setTeamConfig] = useState<any>({});
-  const [gameMode, setGameMode] = useState<string>("");
-
-  // const handleAbortMission = () => {
-  //   setScreen("LOBBY");
-  //   setSelectedTeam([]);
-  //   setTeamConfig({});
-  //   setGameMode("");
-  // };
-
-  // const handleBackToModeSelect = () => {
-  //   setScreen("SELECTMODE");
-  //   setGameMode("");
-  // };
-
+  // ── เรียก startGame และไปหน้าเกม ──────────────────────────
   const handleConfirmMode = async (mode: string) => {
-    console.log("🚀 handleConfirmMode called with mode:", mode); // เพิ่ม
-    console.log("📦 teamConfig:", teamConfig); // เพิ่ม
-    console.log("⚙️ gameConfig:", gameConfig); // เพิ่ม
     try {
-      const result = await startGame({
-        gameMode: mode,
-        config: gameConfig,
-        minionConfig: teamConfig,
-      });
-      console.log("✅ startGame success:", result);
-      setGameMode(mode);
-      if (mode === "duel") setScreen("DUEL");
-      else if (mode === "solitaire") setScreen("SOLITAIRE");
-      else if (mode === "auto") setScreen("AUTO");
+      // สำหรับโหมด Duel (HOST), Solitaire, Auto ต้องเรียก API startGame ก่อน
+      if (mode !== "join") {
+        await startGame({
+          gameMode: mode,
+          config: gameConfig,
+          minionConfig: teamConfig,
+        });
+        setGameMode(mode);
+      }
+
+      if (mode === "duel") {
+        setDuelRole("HOST");
+        setScreen("DUEL_LOBBY");
+      } else if (mode === "solitaire") {
+        setScreen("SOLITAIRE");
+      } else if (mode === "auto") {
+        setScreen("AUTO");
+      }
     } catch (err) {
       console.error("❌ Failed to start game:", err);
       alert("ไม่สามารถเชื่อมต่อ Backend ได้!");
     }
   };
 
+  // ── เมื่อห้อง DUEL เต็ม 2 คน ─────────────────────────────
+  const handleRoomReady = (roomCode: string, playerIndex: number) => {
+    console.log(`✅ Room ${roomCode} ready — I am Player ${playerIndex}`);
+    setMyPlayerIndex(playerIndex);
+    // บังคับเซ็ต gameMode เป็น duel เพื่อให้เงื่อนไขการเรนเดอร์ GameScreenDuel ผ่าน
+    setGameMode("duel"); 
+    setScreen("DUEL");
+  };
+
   return (
     <div className="game-wrapper">
-      {/* Settings Modal */}
       <GameSettings
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         currentConfig={gameConfig}
-        onSave={(newConfig) => {
-          setGameConfig(newConfig);
-          console.log("System Config Updated:", newConfig);
-        }}
+        onSave={(newConfig) => setGameConfig(newConfig)}
       />
 
       {/* 1. LOBBY */}
       {screen === "LOBBY" && (
-        <Lobby
-          onStartGame={() => setScreen("SELECT_MINIONS")}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-        />
-      )}
-
-      {/* ปุ่มเปิด Settings แบบลอย (เผื่อ Lobby ยังไม่มีปุ่ม) */}
-      {screen === "LOBBY" && (
-        <button
-          style={{
-            position: "fixed",
-            top: 10,
-            right: 10,
-            zIndex: 100,
-            padding: "10px",
-            cursor: "pointer",
-          }}
-          onClick={() => setIsSettingsOpen(true)}
-        >
-          ⚙️ CONFIG
-        </button>
+        <>
+          <Lobby
+            onStartGame={() => setScreen("SELECT_MINIONS")}
+            // ── เพิ่ม onJoinGame เพื่อพุ่งไปหน้า DuelLobby (โหมด JOIN) ทันที ──
+            onJoinGame={() => {
+              setDuelRole("JOIN");
+              setScreen("DUEL_LOBBY");
+            }}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+          />
+          {/* <button
+            style={{ position: "fixed", top: 10, right: 10, zIndex: 100, padding: "10px", cursor: "pointer" }}
+            onClick={() => setIsSettingsOpen(true)}
+          >
+            ⚙️ CONFIG
+          </button> */}
+        </>
       )}
 
       {/* 2. SELECT MINIONS */}
@@ -128,7 +122,7 @@ function App() {
         />
       )}
 
-      {/* 3. CONFIGURATION */}
+      {/* 3. CONFIG MINIONS */}
       {screen === "CONFIG_MINIONS" && (
         <MinionConfig
           selectedTeam={selectedTeam}
@@ -140,22 +134,72 @@ function App() {
         />
       )}
 
-      {/* 4. MODE SELECTION */}
+      {/* 4. MODE SELECT */}
       {screen === "SELECTMODE" && (
         <ModeSelect
-          currentConfig={gameConfig} // <--- ส่งค่าให้ SelectMode
-          onConfigUpdate={(newConfig) => {
-            setGameConfig(newConfig); // <--- อัปเดต State หลักเมื่อ Save จากหน้านี้
-            console.log("System Config Updated from Mode Select:", newConfig);
-          }}
-          onConfirm={handleConfirmMode} //<--from top
+          currentConfig={gameConfig}
+          onConfigUpdate={(newConfig) => setGameConfig(newConfig)}
+          // onConfirm จะถูกเรียกเมื่อกดการ์ดโหมด (ถ้าเป็นการ์ด DUEL ให้ส่ง "duel")
+          onConfirm={handleConfirmMode}
           onBack={() => setScreen("CONFIG_MINIONS")}
         />
       )}
-      {/* 5. GAME SCREEN */}
-      {screen === "DUEL" && gameMode === "duel"      && <GameScreenDuel      gameMode={gameMode} config={gameConfig} userDeck={selectedTeam} minionConfig={teamConfig} onLeave={() => setScreen("SELECTMODE")} onReturnLobby={() => setScreen("LOBBY")} />}
-      {screen === "SOLITAIRE" && gameMode === "solitaire" && <GameScreenSolitaire config={gameConfig} userDeck={selectedTeam} minionConfig={teamConfig} onLeave={() => setScreen("SELECTMODE")} onReturnLobby={() => setScreen("LOBBY")} />}
-      {screen === "AUTO" && gameMode === "auto"      && <GameScreenAuto      config={gameConfig} userDeck={selectedTeam} minionConfig={teamConfig} onLeave={() => setScreen("SELECTMODE")} onReturnLobby={() => setScreen("LOBBY")} />}
+
+      {/* 5. DUEL LOBBY — แยก Role HOST/JOIN ชัดเจน */}
+      {screen === "DUEL_LOBBY" && (
+        <DuelLobby
+          role={duelRole}
+          
+          // ── เพิ่มเติม: ส่งการตั้งค่าของคนที่ตั้งห้องเข้าไป ──
+          hostConfig={{ 
+            gameConfig: gameConfig, 
+            teamConfig: teamConfig, 
+            selectedTeam: selectedTeam 
+          }}
+          
+          // ── เพิ่มเติม: สำหรับคนที่เข้ามา Join จะโดนอัปเดตค่าทุกอย่างทับด้วยข้อมูลด้านบน ──
+          onConfigSynced={(syncedData) => {
+            console.log("📥 Received Host Protocol:", syncedData);
+            setGameConfig(syncedData.gameConfig);
+            setTeamConfig(syncedData.teamConfig);
+            setSelectedTeam(syncedData.selectedTeam);
+          }}
+
+          onRoomReady={handleRoomReady}
+          onBack={() => setScreen(duelRole === "JOIN" ? "LOBBY" : "SELECTMODE")}
+        />
+      )}
+
+      {/* 6. GAME SCREENS */}
+      {screen === "DUEL" && gameMode === "duel" && (
+        <GameScreenDuel
+          gameMode={gameMode}
+          config={gameConfig}
+          userDeck={selectedTeam}
+          minionConfig={teamConfig}
+          myPlayerIndex={myPlayerIndex}
+          onLeave={() => setScreen("SELECTMODE")}
+          onReturnLobby={() => setScreen("LOBBY")}
+        />
+      )}
+      {screen === "SOLITAIRE" && gameMode === "solitaire" && (
+        <GameScreenSolitaire
+          config={gameConfig}
+          userDeck={selectedTeam}
+          minionConfig={teamConfig}
+          onLeave={() => setScreen("SELECTMODE")}
+          onReturnLobby={() => setScreen("LOBBY")}
+        />
+      )}
+      {screen === "AUTO" && gameMode === "auto" && (
+        <GameScreenAuto
+          config={gameConfig}
+          userDeck={selectedTeam}
+          minionConfig={teamConfig}
+          onLeave={() => setScreen("SELECTMODE")}
+          onReturnLobby={() => setScreen("LOBBY")}
+        />
+      )}
     </div>
   );
 }
