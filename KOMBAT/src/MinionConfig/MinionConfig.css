@@ -422,3 +422,31 @@
 .modal-btn.save:hover { background: var(--theme-cyan); color: #000; box-shadow: 0 0 15px var(--theme-cyan); }
 .modal-btn.save.save-warn { color: var(--accent-yellow); border-color: var(--accent-yellow); }
 .modal-btn.save.save-warn:hover { background: var(--accent-yellow); color: #000; }
+
+/* Pulse animation สำหรับปุ่ม SHOW SYNTAX GUIDE */
+@keyframes btnPulse {
+  0%   { box-shadow: 0 0 0px rgba(255, 62, 62, 0);   border-color: rgba(0, 243, 255, 0.3); color: var(--theme-cyan); }
+  40%  { box-shadow: 0 0 18px rgba(255, 62, 62, 0.8); border-color: var(--accent-red);      color: var(--accent-red); }
+  100% { box-shadow: 0 0 0px rgba(255, 62, 62, 0);   border-color: rgba(0, 243, 255, 0.3); color: var(--theme-cyan); }
+}
+ 
+.grammar-btn-pulse {
+  animation: btnPulse 0.6s ease-in-out 3; /* 3 รอบ = 1.8s */
+}
+ 
+/* Pulse animation สำหรับ grammar panel border */
+@keyframes panelPulse {
+  0%   { border-left-color: var(--theme-cyan);  box-shadow: none; }
+  40%  { border-left-color: var(--accent-red);  box-shadow: -4px 0 16px rgba(255, 62, 62, 0.5); }
+  100% { border-left-color: var(--theme-cyan);  box-shadow: none; }
+}
+ 
+.grammar-panel-pulse {
+  animation: panelPulse 0.6s ease-in-out 3;
+}
+ 
+/* "Checking" state ใน validation panel */
+.val-checking {
+  color: #ffaa00;
+  font-family: 'Courier New', monospace;
+}
