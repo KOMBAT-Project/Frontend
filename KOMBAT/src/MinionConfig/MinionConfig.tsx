@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "./MinionConfig.css";
 
 import CHAIN from "../assets/CHAIN.png";
@@ -16,120 +16,40 @@ const RACES = [
 ];
 
 // ============================================================
-// SCRIPT VALIDATOR
-// ตรวจ syntax ให้ตรงกับ grammar ของ Lexer/Parser ใน Backend
+// BACKEND VALIDATION
+// ส่ง script ไปให้ Lexer + Parser จริงของ backend ตรวจ
 // ============================================================
 interface ValidationResult {
   valid: boolean;
   errors: string[];
 }
 
-function validateScript(script: string): ValidationResult {
-  const errors: string[] = [];
+async function validateScriptWithBackend(script: string): Promise<ValidationResult> {
   if (!script.trim()) {
     return { valid: false, errors: ["Script is empty."] };
   }
-
-  // Tokenizer แบบง่ายเพื่อ validate
-  const KEYWORDS = new Set([
-    "if","then","else","while","done","move","shoot",
-    "up","down","upleft","upright","downleft","downright",
-    "ally","opponent","nearby",
-  ]);
-  const DIRECTIONS = new Set(["up","down","upleft","upright","downleft","downright"]);
-  const OPERATORS  = new Set(["+","-","*","/","%","^","=","(",")","{","}"]);
-
-  // Remove comments
-  const cleaned = script.replace(/#[^\n]*/g, "").trim();
-  if (!cleaned) return { valid: true, errors: [] };
-
-  // Basic checks
-  const lines = cleaned.split("\n");
-  lines.forEach((line, idx) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-
-    // ห้ามใช้ == หรือ != หรือ >=
-    if (/==|!=|>=|<=/.test(trimmed)) {
-      errors.push(`Line ${idx+1}: Comparison operators (==, !=, >=, <=) are not supported. Use arithmetic expressions only.`);
-    }
-
-    // if ต้องมี then
-    if (/^\s*if\s*\(/.test(trimmed) && !/then/.test(trimmed)) {
-      // ตรวจข้ามหลาย line ไม่ได้ในวิธีนี้ แต่ถ้า if อยู่บรรทัดเดียวแล้วไม่มี then แจ้งเตือน
-      const restOfScript = lines.slice(idx).join(" ");
-      if (!/then/.test(restOfScript.split(/\{|\}/)[0])) {
-        errors.push(`Line ${idx+1}: 'if' requires 'then' keyword. Example: if (x) then { ... }`);
-      }
-    }
-
-    // move ต้องตามด้วย direction
-    const moveMatch = trimmed.match(/^move\s+(\S+)/);
-    if (moveMatch) {
-      if (!DIRECTIONS.has(moveMatch[1].toLowerCase())) {
-        errors.push(`Line ${idx+1}: Invalid direction '${moveMatch[1]}'. Valid: up, down, upleft, upright, downleft, downright`);
-      }
-    } else if (/^move\s*$/.test(trimmed)) {
-      errors.push(`Line ${idx+1}: 'move' requires a direction. Example: move up`);
-    }
-
-    // shoot ต้องตามด้วย direction และ expression
-    const shootMatch = trimmed.match(/^shoot\s+(\S+)\s*(.*)/);
-    if (shootMatch) {
-      if (!DIRECTIONS.has(shootMatch[1].toLowerCase())) {
-        errors.push(`Line ${idx+1}: Invalid direction '${shootMatch[1]}'. Valid: up, down, upleft, upright, downleft, downright`);
-      }
-      if (!shootMatch[2].trim()) {
-        errors.push(`Line ${idx+1}: 'shoot' requires an amount. Example: shoot up 50`);
-      }
-    } else if (/^shoot\s*$/.test(trimmed)) {
-      errors.push(`Line ${idx+1}: 'shoot' requires direction and amount. Example: shoot up 50`);
-    }
-
-    // nearby ต้องตามด้วย direction
-    const nearbyMatch = trimmed.match(/nearby\s+(\S+)/);
-    if (nearbyMatch) {
-      const dir = nearbyMatch[1].replace(/[^a-z]/gi,"").toLowerCase();
-      if (!DIRECTIONS.has(dir)) {
-        errors.push(`Line ${idx+1}: Invalid direction '${nearbyMatch[1]}' after 'nearby'. Valid: up, down, upleft, upright, downleft, downright`);
-      }
-    }
-
-    // ห้ามใช้ direction เดี่ยวๆ ที่ไม่ตามหลัง move/shoot/nearby
-    const dirAlone = trimmed.match(/^(up|down|upleft|upright|downleft|downright)\s*$/i);
-    if (dirAlone) {
-      errors.push(`Line ${idx+1}: Direction '${dirAlone[1]}' must follow 'move', 'shoot', or 'nearby'.`);
-    }
-  });
-
-  // ตรวจ parentheses balance
-  let depth = 0;
-  for (const ch of cleaned) {
-    if (ch === "(") depth++;
-    if (ch === ")") depth--;
-    if (depth < 0) { errors.push("Unmatched closing parenthesis ')'."); break; }
+  try {
+    const res = await fetch("/api/game/validate-script", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ script }),
+    });
+    if (!res.ok) throw new Error("Server error");
+    const data = await res.json();
+    return { valid: data.valid, errors: data.errors ?? [] };
+  } catch {
+    // ถ้า backend ไม่ตอบ ให้ผ่านไปก่อน (อย่าบล็อก UX)
+    return { valid: true, errors: [] };
   }
-  if (depth > 0) errors.push("Unclosed parenthesis '('. Make sure every '(' has a matching ')'."); 
-
-  // ตรวจ braces balance
-  let bdepth = 0;
-  for (const ch of cleaned) {
-    if (ch === "{") bdepth++;
-    if (ch === "}") bdepth--;
-    if (bdepth < 0) { errors.push("Unmatched closing brace '}'."); break; }
-  }
-  if (bdepth > 0) errors.push("Unclosed brace '{'. Make sure every '{' has a matching '}'.");
-
-  return { valid: errors.length === 0, errors };
 }
 
 // ============================================================
-// PRESET SCRIPTS (สอดคล้องกับ Grammar ของ Backend)
+// PRESET SCRIPTS
 // ============================================================
 const SCRIPT_TEMPLATES: Record<string, { label: string; code: string }> = {
-      hunter: {
-        label: "⚔️ Berserker — บุกทะลุทุกอย่าง",
-        code: `# BERSERKER — ไล่ตามศัตรูตลอด
+  hunter: {
+    label: "⚔️ Berserker — บุกทะลุทุกอย่าง",
+    code: `# BERSERKER — ไล่ตามศัตรูตลอด
 if (nearby up) then shoot up 50
 else if (nearby upright) then shoot upright 50
 else if (nearby downright) then shoot downright 50
@@ -164,12 +84,11 @@ else {
   }
 }
 done`,
-      },
+  },
 
-      defender: {
-        label: "🛡️ Iron Wall — ป้อมที่เดินได้",
-        code: `# IRON WALL — ยิงหนัก 30 แล้วถอยทิศตรงข้ามทันที
-# เทิร์นเดียวได้ทั้ง damage + ระยะปลอดภัย
+  defender: {
+    label: "🛡️ Iron Wall — ป้อมที่เดินได้",
+    code: `# IRON WALL — ยิงหนัก 30 แล้วถอยทิศตรงข้ามทันที
 if (nearby up) then { 
   shoot up 30 
   move down 
@@ -193,7 +112,6 @@ else {
   opLoc = opponent
   if (opLoc) then {
     dir = opLoc % 10
-    # ตรวจสอบทิศทางจากหลักหน่วย (1=Up, 2=Upright, ..., 6=Upleft)
     if (dir - 1) then {
       if (dir - 2) then {
         if (dir - 3) then {
@@ -208,19 +126,20 @@ else {
 done`,
   },
 };
+
 // ============================================================
-// EXAMPLE LABEL CONTENT
+// GRAMMAR EXAMPLES
 // ============================================================
 const GRAMMAR_EXAMPLES = [
-  { label: "Variable assignment", good: "x = 10", bad: "x == 10  ← ใช้ = ไม่ใช่ ==" },
-  { label: "If statement",        good: "if (x) then move up", bad: "if (x) move up  ← ขาด then" },
-  { label: "If-else",             good: "if (x) then { shoot up 50 } else { move down }", bad: "" },
-  { label: "While loop",          good: "while (hp) { move up }", bad: "" },
-  { label: "Move",                good: "move up / move downleft", bad: "move north  ← ไม่รู้จัก direction" },
-  { label: "Shoot",               good: "shoot up 50", bad: "shoot up  ← ขาด amount" },
-  { label: "Nearby sensor",       good: "x = nearby upleft", bad: "" },
-  { label: "Ally / Opponent",     good: "loc = opponent", bad: "" },
-  { label: "Operators",           good: "+ - * / % ^", bad: "== != >= <=  ← ไม่รองรับ" },
+  { label: "Variable assignment", good: "x = 10",                                                    bad: "x == 10  ← ใช้ = ไม่ใช่ ==" },
+  { label: "If statement",        good: "if (x) then move up",                                       bad: "if (x) move up  ← ขาด then" },
+  { label: "If-else",             good: "if (x) then { shoot up 50 } else { move down }",            bad: "" },
+  { label: "While loop",          good: "while (hp) { move up }",                                    bad: "" },
+  { label: "Move",                good: "move up / move downleft",                                   bad: "move north  ← ไม่รู้จัก direction" },
+  { label: "Shoot",               good: "shoot up 50",                                               bad: "shoot up  ← ขาด amount" },
+  { label: "Nearby sensor",       good: "x = nearby upleft",                                         bad: "" },
+  { label: "Ally / Opponent",     good: "loc = opponent",                                            bad: "" },
+  { label: "Operators",           good: "+ - * / % ^",                                               bad: "== != >= <=  ← ไม่รองรับ" },
 ];
 
 // ============================================================
@@ -230,6 +149,8 @@ interface MinionConfigData {
   [id: number]: {
     defenseFactor: number | string;
     script: string;
+    validation: ValidationResult;
+    validating: boolean;
   };
 }
 
@@ -249,24 +170,56 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
   const [tempText, setTempText]         = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showGrammar, setShowGrammar]   = useState(false);
+  const [grammarPulse, setGrammarPulse] = useState(false);
 
-  // Validation state per unit (เก็บ error ของแต่ละ modal ขณะพิมพ์)
+  // Validation state ใน modal (live ขณะพิมพ์ — debounced)
   const [modalValidation, setModalValidation] = useState<ValidationResult>({ valid: true, errors: [] });
+  const [modalValidating, setModalValidating] = useState(false);
 
   useEffect(() => {
     const initialConfig: MinionConfigData = {};
     selectedTeam.forEach((id) => {
-      initialConfig[id] = { defenseFactor: "", script: "" };
+      initialConfig[id] = {
+        defenseFactor: "",
+        script: "",
+        validation: { valid: true, errors: [] },
+        validating: false,
+      };
     });
     setConfig(initialConfig);
   }, [selectedTeam]);
 
-  // Live validate ขณะพิมพ์ใน modal
+  // ── Live validate ใน modal (debounce 600ms เพื่อไม่ spam backend) ──
   useEffect(() => {
-    if (isModalOpen) {
-      setModalValidation(validateScript(tempText));
+    if (!isModalOpen) return;
+    if (!tempText.trim()) {
+      setModalValidation({ valid: false, errors: ["Script is empty."] });
+      setModalValidating(false);
+      return;
     }
+
+    setModalValidating(true);
+    const timer = setTimeout(async () => {
+      const result = await validateScriptWithBackend(tempText);
+      setModalValidation(result);
+      setModalValidating(false);
+    }, 600);
+
+    return () => clearTimeout(timer);
   }, [tempText, isModalOpen]);
+
+  // ── Validate script ที่ผูกกับ unit หลัง save (เพื่ออัปเดต badge) ──
+  const validateAndSaveToUnit = useCallback(async (id: number, script: string) => {
+    setConfig(prev => ({
+      ...prev,
+      [id]: { ...prev[id], script, validating: true },
+    }));
+    const result = await validateScriptWithBackend(script);
+    setConfig(prev => ({
+      ...prev,
+      [id]: { ...prev[id], validation: result, validating: false },
+    }));
+  }, []);
 
   const handleDefenseChange = (id: number, value: string) => {
     setErrorMessage("");
@@ -286,10 +239,8 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
     if (templateKey === "custom") {
       openEditor(id, config[id]?.script || "");
     } else if (SCRIPT_TEMPLATES[templateKey]) {
-      setConfig(prev => ({
-        ...prev,
-        [id]: { ...prev[id], script: SCRIPT_TEMPLATES[templateKey].code }
-      }));
+      const script = SCRIPT_TEMPLATES[templateKey].code;
+      validateAndSaveToUnit(id, script);
     }
   };
 
@@ -297,22 +248,23 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
     setActiveUnitId(id);
     const txt = initialScript !== undefined ? initialScript : (config[id]?.script || "");
     setTempText(txt);
-    setModalValidation(validateScript(txt));
+    setModalValidation({ valid: true, errors: [] });
+    setModalValidating(false);
     setIsModalOpen(true);
   };
 
   const handleSaveScript = () => {
-    const result = validateScript(tempText);
-    if (!result.valid) {
-      // ยังให้ save ได้ แต่แจ้งเตือน
-      setModalValidation(result);
-    }
     if (activeUnitId !== null) {
-      setConfig(prev => ({
-        ...prev,
-        [activeUnitId]: { ...prev[activeUnitId], script: tempText }
-      }));
+      validateAndSaveToUnit(activeUnitId, tempText);
       setErrorMessage("");
+
+      // ถ้า validation ยังไม่ valid → pulse syntax guide หลัง modal ปิด
+      if (!modalValidation.valid && tempText.trim()) {
+        setTimeout(() => {
+          setGrammarPulse(true);
+          setTimeout(() => setGrammarPulse(false), 2000); // 1.8s animation + buffer
+        }, 300); // รอให้ modal ปิดก่อน
+      }
     }
     closeModal();
   };
@@ -322,12 +274,15 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
     setActiveUnitId(null);
     setTempText("");
     setModalValidation({ valid: true, errors: [] });
+    setModalValidating(false);
   };
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
+    // ตรวจทุก unit ก่อน deploy
     for (const id of selectedTeam) {
       const unit = config[id];
       const raceName = RACES.find(r => r.id === id)?.name;
+
       if (
         unit.defenseFactor === "" ||
         Number(unit.defenseFactor) < 0 ||
@@ -337,13 +292,15 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
         setErrorMessage(`SYSTEM ALERT: [${raceName}] — Defense (0–100) and Script must be set.`);
         return;
       }
-      // Validate script ก่อน deploy
-      const result = validateScript(unit.script);
+
+      // Re-validate กับ backend ก่อน deploy เสมอ
+      const result = await validateScriptWithBackend(unit.script);
       if (!result.valid) {
         setErrorMessage(`SCRIPT ERROR in [${raceName}]: ${result.errors[0]}`);
         return;
       }
     }
+
     const finalConfig: any = {};
     Object.keys(config).forEach(key => {
       const numKey = Number(key);
@@ -351,31 +308,35 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
         nameTag: RACES.find(r => r.id === numKey)?.name ?? "",
         defenseFactor: Number(config[numKey].defenseFactor),
         script: config[numKey].script,
-      }; //เชื่อม minion with backend
+      };
     });
     onConfirm(finalConfig);
   };
 
-  const getScriptStatus = (id: number): "empty" | "preset" | "valid" | "error" => {
-    const script = config[id]?.script || "";
-    if (!script.trim()) return "empty";
-    const isPreset = Object.values(SCRIPT_TEMPLATES).some(t => t.code === script);
+  // ── Status badge ──
+  const getScriptStatus = (id: number): "empty" | "preset" | "validating" | "valid" | "error" => {
+    const unit = config[id];
+    if (!unit) return "empty";
+    if (!unit.script.trim()) return "empty";
+    if (unit.validating) return "validating";
+    const isPreset = Object.values(SCRIPT_TEMPLATES).some(t => t.code === unit.script);
     if (isPreset) return "preset";
-    const result = validateScript(script);
-    return result.valid ? "valid" : "error";
+    return unit.validation.valid ? "valid" : "error";
   };
 
   const STATUS_COLORS: Record<string, string> = {
-    empty:  "#555",
-    preset: "#00d4ff",
-    valid:  "#00ff88",
-    error:  "#ff3e3e",
+    empty:      "#555",
+    preset:     "#00d4ff",
+    validating: "#ffaa00",
+    valid:      "#00ff88",
+    error:      "#ff3e3e",
   };
   const STATUS_LABELS: Record<string, string> = {
-    empty:  "NO SCRIPT",
-    preset: "PRESET LOADED",
-    valid:  "SCRIPT VALID ✓",
-    error:  "SYNTAX ERROR ✗",
+    empty:      "NO SCRIPT",
+    preset:     "PRESET LOADED",
+    validating: "CHECKING...",
+    valid:      "SCRIPT VALID ✓",
+    error:      "SYNTAX ERROR ✗",
   };
 
   return (
@@ -385,18 +346,19 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
       <div className="config-header">
         <h1 className="config-title">TACTICAL SCRIPTING</h1>
         <button
-          className="grammar-toggle-btn"
-          onClick={() => setShowGrammar(v => !v)}
+          className={`grammar-toggle-btn ${grammarPulse ? "grammar-btn-pulse" : ""}`}
+          onClick={() => {
+            setShowGrammar(v => !v);
+            setGrammarPulse(false); // หยุด pulse เมื่อคลิก
+          }}
         >
-          {showGrammar ? "▲ HIDE SYNTAX GUIDE" : "▼ SHOW SYNTAX GUIDE"}
-        </button>
+  {showGrammar ? "▲ HIDE SYNTAX GUIDE" : "▼ SHOW SYNTAX GUIDE"}
+</button>
       </div>
 
-      {/* =========================================
-          GRAMMAR REFERENCE PANEL
-      ========================================= */}
+      {/* GRAMMAR REFERENCE PANEL */}
       {showGrammar && (
-        <div className="grammar-panel">
+        <div className={`grammar-panel ${grammarPulse ? "grammar-panel-pulse" : ""}`}>
           <div className="grammar-panel-header">
             <span className="grammar-title">📡 SCRIPT SYNTAX REFERENCE</span>
             <span className="grammar-subtitle">Valid keywords and patterns for your minion AI</span>
@@ -431,9 +393,7 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
         </div>
       )}
 
-      {/* =========================================
-          UNIT CONFIG CARDS
-      ========================================= */}
+      {/* UNIT CONFIG CARDS */}
       <div className="config-grid-container">
         {selectedTeam.map((id) => {
           const race = RACES.find(r => r.id === id);
@@ -521,7 +481,6 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
                       : "// Awaiting instructions..."}
                   </div>
 
-                  {/* Inline error hint ถ้า script มี error */}
                   {status === "error" && (
                     <div className="inline-script-error">
                       ⚠ Script has syntax errors — click &lt;/&gt; EDIT to fix
@@ -534,9 +493,7 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
         })}
       </div>
 
-      {/* =========================================
-          ACTION BAR
-      ========================================= */}
+      {/* ACTION BAR */}
       <div className="action-bar" style={{ flexDirection: "column", gap: "10px" }}>
         {errorMessage && (
           <div className="deploy-error">{errorMessage}</div>
@@ -550,9 +507,7 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
         </div>
       </div>
 
-      {/* =========================================
-          CODE EDITOR MODAL
-      ========================================= */}
+      {/* CODE EDITOR MODAL */}
       {isModalOpen && (
         <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && closeModal()}>
           <div className="strategy-modal code-editor-modal">
@@ -568,7 +523,7 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
             </div>
 
             <textarea
-              className={`modal-textarea code-font ${!modalValidation.valid && tempText.trim() ? "has-error" : ""}`}
+              className={`modal-textarea code-font ${!modalValidation.valid && tempText.trim() && !modalValidating ? "has-error" : ""}`}
               value={tempText}
               onChange={e => setTempText(e.target.value)}
               placeholder={`# Write your strategy here\n# Example:\nwhile (1) {\n  if (nearby up) then shoot up 30\n  else move up\n}`}
@@ -580,6 +535,8 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
             <div className="validation-panel">
               {tempText.trim() === "" ? (
                 <span className="val-empty">⬡ Awaiting input...</span>
+              ) : modalValidating ? (
+                <span className="val-checking">⟳ Checking syntax...</span>
               ) : modalValidation.valid ? (
                 <span className="val-ok">✓ Syntax OK — Script is valid</span>
               ) : (
@@ -599,10 +556,10 @@ const MinionConfig: React.FC<Props> = ({ selectedTeam, onConfirm, onBack }) => {
             <div className="modal-actions">
               <button className="modal-btn cancel" onClick={closeModal}>DISCARD</button>
               <button
-                className={`modal-btn save ${!modalValidation.valid && tempText.trim() ? "save-warn" : ""}`}
+                className={`modal-btn save ${!modalValidation.valid && tempText.trim() && !modalValidating ? "save-warn" : ""}`}
                 onClick={handleSaveScript}
               >
-                {!modalValidation.valid && tempText.trim() ? "SAVE ANYWAY ⚠" : "SAVE SCRIPT"}
+                {!modalValidation.valid && tempText.trim() && !modalValidating ? "SAVE ANYWAY ⚠" : "SAVE SCRIPT"}
               </button>
             </div>
           </div>
