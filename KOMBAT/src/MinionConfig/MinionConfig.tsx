@@ -50,38 +50,42 @@ const SCRIPT_TEMPLATES: Record<string, { label: string; code: string }> = {
   hunter: {
     label: "⚔️ Berserker — บุกทะลุทุกอย่าง",
     code: `# BERSERKER — ไล่ตามศัตรูตลอด
-if (nearby up) then shoot up 50
-else if (nearby upright) then shoot upright 50
-else if (nearby downright) then shoot downright 50
-else if (nearby down) then shoot down 50
-else if (nearby downleft) then shoot downleft 50
-else if (nearby upleft) then shoot upleft 50
-else {
-  opLoc = opponent
-  if (opLoc) then {
-    dir = opLoc % 10
-    if (dir - 1) then {
-       if (dir - 2) then {
-          if (dir - 3) then {
-             if (dir - 4) then {
-                if (dir - 5) then move upleft else move downleft
-             } else move down
-          } else move downright
-       } else move upright
-    } else move up
-  } 
-  else {
-    r = random % 6
-    if (r) then {
-       if (r - 1) then {
-          if (r - 2) then {
-             if (r - 3) then {
-                if (r - 4) then move upleft else move downleft
-             } else move down
-          } else move downright
-       } else move upright
-    } else move up
-  }
+op = opponent
+if (op) then {
+   dist = op / 10
+   dir = op % 10
+   if (dist - 1) then {
+      if (dir - 1) then {
+         if (dir - 2) then {
+            if (dir - 3) then {
+               if (dir - 4) then {
+                  if (dir - 5) then move upleft else move downleft
+               } else move down
+            } else move downright
+         } else move upright
+      } else move up
+   } else {
+      if (dir - 1) then {
+         if (dir - 2) then {
+            if (dir - 3) then {
+               if (dir - 4) then {
+                  if (dir - 5) then shoot upleft 50 else shoot downleft 50
+               } else shoot down 50
+            } else shoot downright 50
+         } else shoot upright 50
+      } else shoot up 50
+   }
+} else {
+   r = random % 6
+   if (r) then {
+      if (r - 1) then {
+         if (r - 2) then {
+            if (r - 3) then {
+               if (r - 4) then move upleft else move downleft
+            } else move down
+         } else move downright
+      } else move upright
+   } else move up
 }
 done`,
   },
@@ -89,41 +93,65 @@ done`,
   defender: {
     label: "🛡️ Iron Wall — ป้อมที่เดินได้",
     code: `# IRON WALL — ยิงหนัก 30 แล้วถอยทิศตรงข้ามทันที
-if (nearby up) then { 
-  shoot up 30 
-  move down 
-} else if (nearby upright) then { 
-  shoot upright 30 
-  move downleft 
-} else if (nearby downright) then { 
-  shoot downright 30 
-  move upleft 
-} else if (nearby down) then { 
-  shoot down 30 
-  move up 
-} else if (nearby downleft) then { 
-  shoot downleft 30 
-  move upright 
-} else if (nearby upleft) then { 
-  shoot upleft 30 
-  move downright 
-} 
-else {
-  opLoc = opponent
-  if (opLoc) then {
-    dir = opLoc % 10
-    if (dir - 1) then {
-      if (dir - 2) then {
-        if (dir - 3) then {
-          if (dir - 4) then {
-            if (dir - 5) then move upleft else move downleft
-          } else move down
-        } else move downright
-      } else move upright
-    } else move up
+t = t + 1
+m = 0
+while (3 - m) {
+  if (Budget - 100) then {
+    opponentLoc = opponent
+    if (opponentLoc / 10 - 1) then {
+      if (opponentLoc % 10 - 5) then move downleft
+      else if (opponentLoc % 10 - 4) then move down
+      else if (opponentLoc % 10 - 3) then move downright
+      else if (opponentLoc % 10 - 2) then move downright
+      else if (opponentLoc % 10 - 1) then move upright
+      else move up
+    }
+    else if (opponentLoc) then {
+      if (opponentLoc % 10 - 5) then {
+        cost = nearby upleft % 100 + 1
+        if (Budget - cost) then shoot upleft cost else {}
+      }
+      else if (opponentLoc % 10 - 4) then {
+        cost = nearby downleft % 100 + 1
+        if (Budget - cost) then shoot downleft cost else {}
+      }
+      else if (opponentLoc % 10 - 3) then {
+        cost = nearby down % 100 + 1
+        if (Budget - cost) then shoot down cost else {}
+      }
+      else if (opponentLoc % 10 - 2) then {
+        cost = nearby downright % 100 + 1
+        if (Budget - cost) then shoot downright cost else {}
+      }
+      else if (opponentLoc % 10 - 1) then {
+        cost = nearby upright % 100 + 1
+        if (Budget - cost) then shoot upright cost else {}
+      }
+      else {
+        cost = nearby up % 100 + 1
+        if (Budget - cost) then shoot up cost else {}
+      }
+done
+    }
+    else {
+      try = 0
+      while (3 - try) {
+        success = 1
+        dir = random % 6
+        if ((dir - 4) * (nearby upleft % 10 + 1) ^ 2) then move upleft
+        else if ((dir - 3) * (nearby downleft % 10 + 1) ^ 2) then move downleft
+        else if ((dir - 2) * (nearby down % 10 + 1) ^ 2) then move down
+        else if ((dir - 1) * (nearby downright % 10 + 1) ^ 2) then move downright
+        else if (dir * (nearby upright % 10 + 1) ^ 2) then move upright
+        else if ((nearby up % 10 + 1) ^ 2) then move up
+        else success = 0
+        if (success) then try = 3 else try = try + 1
+      }
+      m = m + 1
+    }
   }
-}
-done`,
+  else done}
+  `,
   },
 };
 

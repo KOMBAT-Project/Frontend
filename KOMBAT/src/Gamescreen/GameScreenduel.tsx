@@ -582,7 +582,7 @@ const GameScreenDuel: React.FC<GameScreenProps> = ({
  
       <div className="game-header">
         <h1 className="main-title">MISSION: DUEL MODE</h1>
-        <p className="turn-counter">TURN {String(Math.max(0, currentTurn - 1)).padStart(2, "0")} / {activeConfig.maxTurns}</p>
+        <p className="turn-counter">TURN {String(Math.max(0, currentTurn)).padStart(2, "0")} / {activeConfig.maxTurns}</p>
         <div className={`phase-indicator ${isExecuting ? "phase-executing" : ""}`}>{getPhaseInstruction()}</div>
       </div>
  
