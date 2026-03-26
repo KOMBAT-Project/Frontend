@@ -67,7 +67,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
   const activeConfig = config || DEFAULT_CONFIG;
   const { gameState, connected, sendAction } = useGameSocket();
 
-  const [currentTurn, setCurrentTurn]           = useState(1);
+  const [currentTurn, setCurrentTurn]           = useState(0);
   const [phase, setPhase]                       = useState<GamePhase>("SETUP_P1");
   const [spawnCounter, setSpawnCounter]         = useState(0);
   const [actionCompleted, setActionCompleted]   = useState(false);
@@ -707,7 +707,7 @@ const GameScreenSolitaire: React.FC<GameScreenProps> = ({
       )}
       <div className="game-header">
         <h1 className="main-title">MISSION: SOLITAIRE MODE</h1>
-        <p className="turn-counter">TURN {String(currentTurn).padStart(2, "0")} / {activeConfig.maxTurns}</p>
+        <p className="turn-counter">TURN {String(Math.max(0, currentTurn - 1)).padStart(2, "0")} / {activeConfig.maxTurns}</p>
         <div className={`phase-indicator ${isExecuting ? "phase-executing" : ""}`}>
           {getPhaseInstruction()}
         </div>

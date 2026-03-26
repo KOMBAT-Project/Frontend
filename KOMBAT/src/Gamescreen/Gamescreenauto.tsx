@@ -73,7 +73,7 @@ const GameScreenAuto: React.FC<GameScreenProps> = ({
   const activeConfig = config || DEFAULT_CONFIG;
   const { gameState, connected, sendAction } = useGameSocket();
 
-  const [currentTurn, setCurrentTurn]     = useState(1);
+  const [currentTurn, setCurrentTurn]     = useState(0);
   const [phase, setPhase]                 = useState<GamePhase>("SETUP_P1");
   const [spawnCounter, setSpawnCounter]   = useState(0);
   const [placedUnits, setPlacedUnits]     = useState<Record<string, PlacedUnit>>({});
@@ -513,7 +513,7 @@ const GameScreenAuto: React.FC<GameScreenProps> = ({
       {!connected && <div className="disconnected-banner">⚠️ DISCONNECTED FROM SERVER — Reconnecting...</div>}
       <div className="game-header">
         <h1 className="main-title">SIMULATION: AUTO MODE</h1>
-        <p className="turn-counter">TURN {String(currentTurn).padStart(2, "0")} / {activeConfig.maxTurns}</p>
+        <p className="turn-counter">TURN {String(Math.max(0, currentTurn - 1)).padStart(2, "0")} / {activeConfig.maxTurns}</p>
         <div className={`phase-indicator ${isExecuting ? "phase-executing" : ""}`}>{getPhaseInstruction()}</div>
       </div>
       <div className="game-body">

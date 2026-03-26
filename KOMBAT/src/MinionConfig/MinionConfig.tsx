@@ -50,38 +50,42 @@ const SCRIPT_TEMPLATES: Record<string, { label: string; code: string }> = {
   hunter: {
     label: "⚔️ Berserker — บุกทะลุทุกอย่าง",
     code: `# BERSERKER — ไล่ตามศัตรูตลอด
-if (nearby up) then shoot up 50
-else if (nearby upright) then shoot upright 50
-else if (nearby downright) then shoot downright 50
-else if (nearby down) then shoot down 50
-else if (nearby downleft) then shoot downleft 50
-else if (nearby upleft) then shoot upleft 50
-else {
-  opLoc = opponent
-  if (opLoc) then {
-    dir = opLoc % 10
-    if (dir - 1) then {
-       if (dir - 2) then {
-          if (dir - 3) then {
-             if (dir - 4) then {
-                if (dir - 5) then move upleft else move downleft
-             } else move down
-          } else move downright
-       } else move upright
-    } else move up
-  } 
-  else {
-    r = random % 6
-    if (r) then {
-       if (r - 1) then {
-          if (r - 2) then {
-             if (r - 3) then {
-                if (r - 4) then move upleft else move downleft
-             } else move down
-          } else move downright
-       } else move upright
-    } else move up
-  }
+op = opponent
+if (op) then {
+   dist = op / 10
+   dir = op % 10
+   if (dist - 1) then {
+      if (dir - 1) then {
+         if (dir - 2) then {
+            if (dir - 3) then {
+               if (dir - 4) then {
+                  if (dir - 5) then move upleft else move downleft
+               } else move down
+            } else move downright
+         } else move upright
+      } else move up
+   } else {
+      if (dir - 1) then {
+         if (dir - 2) then {
+            if (dir - 3) then {
+               if (dir - 4) then {
+                  if (dir - 5) then shoot upleft 50 else shoot downleft 50
+               } else shoot down 50
+            } else shoot downright 50
+         } else shoot upright 50
+      } else shoot up 50
+   }
+} else {
+   r = random % 6
+   if (r) then {
+      if (r - 1) then {
+         if (r - 2) then {
+            if (r - 3) then {
+               if (r - 4) then move upleft else move downleft
+            } else move down
+         } else move downright
+      } else move upright
+   } else move up
 }
 done`,
   },
@@ -89,39 +93,31 @@ done`,
   defender: {
     label: "🛡️ Iron Wall — ป้อมที่เดินได้",
     code: `# IRON WALL — ยิงหนัก 30 แล้วถอยทิศตรงข้ามทันที
-if (nearby up) then { 
-  shoot up 30 
-  move down 
-} else if (nearby upright) then { 
-  shoot upright 30 
-  move downleft 
-} else if (nearby downright) then { 
-  shoot downright 30 
-  move upleft 
-} else if (nearby down) then { 
-  shoot down 30 
-  move up 
-} else if (nearby downleft) then { 
-  shoot downleft 30 
-  move upright 
-} else if (nearby upleft) then { 
-  shoot upleft 30 
-  move downright 
-} 
-else {
-  opLoc = opponent
-  if (opLoc) then {
-    dir = opLoc % 10
-    if (dir - 1) then {
-      if (dir - 2) then {
-        if (dir - 3) then {
-          if (dir - 4) then {
-            if (dir - 5) then move upleft else move downleft
-          } else move down
-        } else move downright
-      } else move upright
-    } else move up
-  }
+op = opponent
+if (op) then {
+    dist = op / 10
+    dir = op % 10
+    if (dist - 1) then {
+        if (dir - 1) then {
+            if (dir - 2) then {
+                if (dir - 3) then {
+                    if (dir - 4) then {
+                        if (dir - 5) then move upleft else move downleft
+                    } else move down
+                } else move downright
+            } else move upright
+        } else move up
+    } else {
+        if (dir - 1) then {
+            if (dir - 2) then {
+                if (dir - 3) then {
+                    if (dir - 4) then {
+                        if (dir - 5) then { shoot upleft 30 move downright } else { shoot downleft 30 move upright }
+                    } else { shoot down 30 move up }
+                } else { shoot downright 30 move upleft }
+            } else { shoot upright 30 move downleft }
+        } else { shoot up 30 move down }
+    }
 }
 done`,
   },
